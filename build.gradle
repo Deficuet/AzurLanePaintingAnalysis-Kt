@@ -1,0 +1,54 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.6.10'
+    id 'org.openjfx.javafxplugin' version '0.0.12'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+group 'io.github.deficuet'
+version '1.0-SNAPSHOT'
+mainClassName = "io.github.deficuet.alpa.gui.MainApp"
+
+javafx {
+    version = "11.0.2"
+    modules = ['javafx.controls', 'javafx.graphics', 'javafx.swing']
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation "org.jetbrains.kotlin:kotlin-gradle-plugin"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-core"
+    implementation 'no.tornado:tornadofx:1.7.20'
+    implementation 'com.github.Deficuet:UnityKt:v0.0.1-alpha.6'
+    implementation 'net.mamoe.yamlkt:yamlkt:0.10.2'
+    implementation 'org.json:json:20220320'
+    implementation 'org.bytedeco:javacv-platform:1.5.7'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+}
+
+shadowJar {
+    archiveBaseName.set("ALPA")
+    archiveClassifier.set("")
+    archiveVersion.set("0.0.1-alpha.0")
+    zip64 = true
+}
+
+test {
+    useJUnitPlatform()
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = 11
+}
+
+compileTestKotlin {
+    kotlinOptions.jvmTarget = 11
+}
