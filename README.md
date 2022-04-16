@@ -49,7 +49,7 @@
 |   9级   | 37秒 |
 
 - ### 解析AssetBundle
-不再使用Unity Tools的WebExtractor以及binary2text。现在解析AssetBundle使用的是我自己写的[UnityKt](https://github.com/Deficuet/UnityKt)，基于[AssetStudio](https://github.com/Perfare/AssetStudio)，免去了大量的文件IO。同时所有`Object`都是惰性加载，只有访问其属性时才会加载，节省了大量时间
+不再使用Unity Tools的WebExtractor以及binary2text。现在解析AssetBundle使用的是我自己写的[UnityKt](https://github.com/Deficuet/UnityKt)，基于[AssetStudio](https://github.com/Perfare/AssetStudio)并拓展了少量属性，免去了大量的文件IO。同时所有`Object`都是惰性加载，只有访问其属性时才会加载，节省了大量时间
 
 - ### 坐标微调
 为立绘合并和差分表情接头都提供了粘贴坐标微调的功能。
@@ -66,7 +66,7 @@
 - ### 差分接头的局部预览
 ![image](https://user-images.githubusercontent.com/36525579/163661090-7a2d4588-59c8-4389-ad5e-adaa3a380f60.png)
 
-方便检查并微调
+方便检查并微调。展示区域是差分表情图片的矩形区域往四周拓32个像素
 
 差分接头的`总体预览`和`局部预览`展示的图片全部采用惰性加载，减少导入差分表情后的等待时间
 ## 食用方法
@@ -74,9 +74,11 @@
 
 ![image](https://user-images.githubusercontent.com/36525579/163661419-df0c3f6d-65b4-4827-b1b2-7c646615ace7.png)
 
-导入文件只需要无_tex后缀的文件，例如`pangpeimagenuo`, `xiefeierde_4`, `ruoye_2_n`, `diliyasite_2_rw`，不需要合并或无法读取文件等情况都会报错。文件来自瓜游游戏文件的`painting`文件夹
+导入文件只需要无_tex后缀的文件，例如`pangpeimagenuo`, `xiefeierde_4`, `ruoye_2_n`, `diliyasite_2_rw`。文件来自瓜游游戏文件的`painting`文件夹
 
 ![image](https://user-images.githubusercontent.com/36525579/163661590-0e1f4415-749e-411e-81f7-5d7475c9ae0b.png)
+
+不需要合并或无法读取文件等情况都会报错。导入文件后会检查依赖项用来优化导入立绘时筛选文件名，同一文件夹下找不到依赖项就会报错。
 
 之后一个一个往里导入立绘的png图片即可。**不提供把立绘碎片拼在一起的功能。**
 
