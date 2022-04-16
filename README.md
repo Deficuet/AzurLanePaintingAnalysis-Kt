@@ -1,6 +1,8 @@
 # AzurLanePaintingAnalysis
 通过分析AssetBundle自动计算并将多张立绘和差分表情组合成一个完整的立绘图片
 
+重构了之前写的Python项目[AzurLanePaintingAnalyzer](https://github.com/Deficuet/AzurLanePaintingAnalyzer)
+
 ### 目录
 
 - [启动方法](#启动方法)
