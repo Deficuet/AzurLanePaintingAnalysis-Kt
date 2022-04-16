@@ -3,7 +3,7 @@
 
 ### 目录
 
-- [启动方法](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/edit/main/README.md#%E5%90%AF%E5%8A%A8%E6%96%B9%E6%B3%95)
+- [启动方法](启动方法)
 - [改动及新增](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/edit/main/README.md#%E6%94%B9%E5%8A%A8%E5%8F%8A%E6%96%B0%E5%A2%9E)
 
 ### 立绘合并
