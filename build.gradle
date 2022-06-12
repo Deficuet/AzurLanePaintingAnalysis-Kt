@@ -26,7 +26,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-gradle-plugin"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-core"
     implementation 'no.tornado:tornadofx:1.7.20'
-    implementation 'com.github.Deficuet:UnityKt:v0.0.1-alpha.6'
+    implementation 'com.github.Deficuet:UnityKt:v0.0.1-alpha.7'
     implementation 'net.mamoe.yamlkt:yamlkt:0.10.2'
     implementation 'org.json:json:20220320'
     implementation 'org.bytedeco:javacv-platform:1.5.7'

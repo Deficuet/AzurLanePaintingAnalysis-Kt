@@ -9,7 +9,6 @@ import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.paint.Color
 import javafx.stage.FileChooser
-import java.awt.Desktop
 import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Files
@@ -99,9 +98,11 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         }
         continuation.baseMergeInfo = PaintingMergeInfo(baseRect)
         with(baseChildren) {
-            firstOrNull {
+            filter {
                 it.mGameObject.getObj()!!.mName == "layers"
-            }?.also { layers ->
+            }.takeUnless {
+                it.isEmpty()
+            }?.forEach { layers ->
                 val children = layers.mChildren.getAllInstanceOf<RectTransform>()
                 rectList.addAll(children)
                 val layersOrigin = (layers.mAnchorMax - layers.mAnchorMin) * baseRect.size * layers.mPivot +
@@ -115,9 +116,9 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                         PaintingMergeInfo(child, child.mLocalScale.vector2, paste)
                     )
                 }
-            } ?: first {
+            } ?: filter {
                 it.mGameObject.getObj()!!.mName == "paint"
-            }.also { layers ->
+            }.forEach { layers ->
                 rectList.add(layers)
                 val paste = ((layers.mAnchorMax - layers.mAnchorMin) * baseRect.size * layers.mPivot +
                     layers.mAnchorMin * baseRect.size + layers.mAnchoredPosition -
