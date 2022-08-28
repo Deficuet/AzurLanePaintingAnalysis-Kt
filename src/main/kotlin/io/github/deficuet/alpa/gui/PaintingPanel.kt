@@ -49,7 +49,7 @@ class PaintingPanel: PanelTemplate("立绘合并") {
         with(requiredImageListView) {
             cellFormat {
                 text = it
-                textFill = if (functions.continuation.mergeInfoList[it].isImported) {
+                textFill = if (functions.continuation.mergeInfoList[index].isImported) {
                     Color.BLUE
                 } else Color.BLACK
             }

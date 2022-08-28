@@ -30,14 +30,14 @@ dependencies {
     implementation 'net.mamoe.yamlkt:yamlkt:0.10.2'
     implementation 'org.json:json:20220320'
     implementation 'org.bytedeco:javacv-platform:1.5.7'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
 }
 
 shadowJar {
     archiveBaseName.set("ALPA")
     archiveClassifier.set("")
-    archiveVersion.set("0.0.1-alpha.0")
+    archiveVersion.set("0.0.1-alpha.2")
     zip64 = true
 }
 

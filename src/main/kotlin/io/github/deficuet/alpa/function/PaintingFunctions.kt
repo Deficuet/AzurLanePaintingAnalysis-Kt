@@ -17,6 +17,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import tornadofx.*
 import javax.imageio.ImageIO
+import kotlin.math.min
 
 class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
     lateinit var continuation: PaintingTaskContinuation
@@ -187,14 +188,12 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
 
     override fun importPainting() {
         val paintingName = gui.requiredImageListView.selectionModel.selectedItem
+        val paintingIndex = gui.requiredImageListView.selectionModel.selectedIndex
+        val wc = configurations.painting.wildcards.replace("{name}", paintingName)
+        val mergeInfo = continuation.mergeInfoList[paintingIndex]
         val files = chooseFile("导入立绘",
             arrayOf(
-                FileChooser.ExtensionFilter(
-                    "Required Files (${configurations.painting.wildcards})"
-                        .replace("{name}", paintingName),
-                    configurations.painting.wildcards
-                        .replace("{name}", paintingName)
-                ),
+                FileChooser.ExtensionFilter("Required Files ($wc)", wc),
                 FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
             ),
             File(configurations.painting.importPaintingPath)
@@ -203,91 +202,85 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         val imageFile = files[0]
         configurations.painting.importPaintingPath = imageFile.parent
         val image = ImageIO.read(imageFile)
-        val painting = with(continuation.mergeInfoList) {
-            val pre = with(this[paintingName]) {
-                val w = maxOf(rawSize.x.toInt(), image.width)
-                val h = maxOf(rawSize.y.toInt(), image.height)
-                val x = (maxOf(rect.size.x.roundToInt(), w) * scale.x).roundToInt()
-                val y = (maxOf(rect.size.y.roundToInt(), h) * scale.y).roundToInt()
-                BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR).paste(image.flipY(), 0, 0).resize(x, y)
-            }
-            if (gui.requiredImageListView.selectionModel.selectedIndex == 0) {
-                with(continuation.extraPixel) {
-                    val w = pre.width + this[0] + this[2]
-                    val h = pre.height + this[1] + this[3]
-                    val x = this[0]; val y = this[1]
-                    BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR).paste(pre, x, y)
-                }
-            } else pre
+        val pre = with(mergeInfo) {
+            val w = maxOf(rawSize.x.toInt(), image.width)
+            val h = maxOf(rawSize.y.toInt(), image.height)
+            val x = (maxOf(rect.size.x.roundToInt(), w) * scale.x).roundToInt()
+            val y = (maxOf(rect.size.y.roundToInt(), h) * scale.y).roundToInt()
+            BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR).paste(image.flipY(), 0, 0).resize(x, y)
         }
-        with(continuation.mergeInfoList[paintingName]) {
+        val painting = if (paintingIndex == 0) {
+            with(continuation.extraPixel) {
+                val w = pre.width + this[0] + this[2]
+                val h = pre.height + this[1] + this[3]
+                val x = this[0]; val y = this[1]
+                BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR).paste(pre, x, y)
+            }
+        } else pre
+        with(mergeInfo) {
             exhibit = image
             this.image = painting
         }
         mergePainting()
         with(gui.previewTabPane) {
-            tabs.indexOfFirst { it.text == paintingName }.let {
-                val tab = Tab(paintingName).apply {
-                    vbox {
-                        imageview(
-                            continuation.mergeInfoList[paintingName].exhibit.createPreview(height = 478)
-                        )
-                        hbox {
-                            isDisable = continuation.baseMergeInfo.name.contentEquals(paintingName)
-                            alignment = Pos.CENTER
-                            vboxConstraints { marginTop = 16.0 }
-                            label("横向偏移：")
-                            with(continuation.mergeInfoList[paintingName]) {
-                                spinner(
-                                    -this.image.width - pastePoint.x.toInt(),
-                                    continuation.baseMergeInfo.image.width - pastePoint.x.toInt(),
-                                    offsetX, editable = true
-                                ) {
-                                    tooltip("正方向为右方")
-                                    valueProperty().addListener(
-                                        ChangeListener { _, _, newValue ->
-                                            offsetX = newValue
-                                        }
-                                    )
-                                }
-                                label("纵向偏移：") {
-                                    hboxConstraints { marginLeft = 16.0 }
-                                }
-                                spinner(
-                                    -this.image.height - pastePoint.y.toInt(),
-                                    continuation.baseMergeInfo.image.height - pastePoint.y.toInt(),
-                                    offsetY, editable = true
-                                ) {
-                                    tooltip("正方向为上方")
-                                    valueProperty().addListener(
-                                        ChangeListener { _, _, newValue ->
-                                            offsetY = newValue
-                                        }
-                                    )
-                                }
-                            }
-                            button("重新合并") {
-                                minWidth = 80.0; minHeight = 30.0
-                                tooltip("将重新计算坐标并制图")
-                                hboxConstraints { marginLeft = 16.0 }
-                                action {
-                                    with(gui.previewTabPane) {
-                                        selectionModel.select(0)
+            val tab = Tab(paintingName).apply {
+                vbox {
+                    imageview(
+                        mergeInfo.exhibit.createPreview(height = 478)
+                    )
+                    hbox {
+                        isDisable = paintingIndex == 0
+                        alignment = Pos.CENTER
+                        vboxConstraints { marginTop = 16.0 }
+                        label("横向偏移：")
+                        with(mergeInfo) {
+                            spinner(
+                                -this.image.width - pastePoint.x.toInt(),
+                                continuation.baseMergeInfo.image.width - pastePoint.x.toInt(),
+                                offsetX, editable = true
+                            ) {
+                                tooltip("正方向为右方")
+                                valueProperty().addListener(
+                                    ChangeListener { _, _, newValue ->
+                                        offsetX = newValue
                                     }
-                                    mergePainting()
+                                )
+                            }
+                            label("纵向偏移：") {
+                                hboxConstraints { marginLeft = 16.0 }
+                            }
+                            spinner(
+                                -this.image.height - pastePoint.y.toInt(),
+                                continuation.baseMergeInfo.image.height - pastePoint.y.toInt(),
+                                offsetY, editable = true
+                            ) {
+                                tooltip("正方向为上方")
+                                valueProperty().addListener(
+                                    ChangeListener { _, _, newValue ->
+                                        offsetY = newValue
+                                    }
+                                )
+                            }
+                        }
+                        button("重新合并") {
+                            minWidth = 80.0; minHeight = 30.0
+                            tooltip("将重新计算坐标并制图")
+                            hboxConstraints { marginLeft = 16.0 }
+                            action {
+                                with(gui.previewTabPane) {
+                                    selectionModel.select(0)
                                 }
+                                mergePainting()
                             }
                         }
                     }
                 }
-                when (it) {
-                    -1 -> tabs.add(tab)
-                    else -> {
-                        tabs.removeAt(it)
-                        tabs.add(it, tab)
-                    }
-                }
             }
+            if (mergeInfo.displayTab != null) {
+                tabs.remove(mergeInfo.displayTab)
+            }
+            tabs.add(min(tabs.size, paintingIndex + 1), tab)
+            mergeInfo.displayTab = tab
         }
         with(gui) {
             previewTabPane.selectionModel.select(0)

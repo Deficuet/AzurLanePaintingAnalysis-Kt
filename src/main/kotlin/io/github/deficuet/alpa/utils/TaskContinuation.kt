@@ -3,6 +3,7 @@ package io.github.deficuet.alpa.utils
 import io.github.deficuet.unitykt.*
 import io.github.deficuet.unitykt.data.*
 import io.github.deficuet.unitykt.math.*
+import javafx.scene.control.Tab
 import javafx.scene.image.Image as ImageFX
 import java.awt.image.BufferedImage
 import java.io.File
@@ -54,6 +55,7 @@ class PaintingMergeInfo(
 
     var offsetX = 0
     var offsetY = 0
+    var displayTab: Tab? = null
     lateinit var exhibit: BufferedImage
 }
 
