@@ -121,14 +121,10 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
     }
 
     override fun importPainting() {
+        val wc = configurations.painting.wildcards.replace("{name}", continuation.taskName)
         val files = chooseFile("导入立绘",
             arrayOf(
-                FileChooser.ExtensionFilter(
-                    "Required Files (${configurations.painting.wildcards})"
-                        .replace("{name}", continuation.taskName),
-                    configurations.painting.wildcards
-                        .replace("{name}", continuation.taskName)
-                ),
+                FileChooser.ExtensionFilter("Required Files ($wc)", wc),
                 FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
             ),
             File(configurations.painting.importPaintingPath)
@@ -158,20 +154,12 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             .split('_', limit = 3)
             .slice(0..1)
             .joinToString("_")
+        val wcf = configurations.paintingface.fileWildcards.replace("{name}", fileName)
+        val wct = configurations.paintingface.fileWildcards.replace("{name}", continuation.taskName)
         val files = chooseFile("导入差分表情文件",
             arrayOf(
-                FileChooser.ExtensionFilter(
-                    "Required Files (${configurations.paintingface.fileWildcards})"
-                        .replace("{name}", fileName),
-                    configurations.paintingface.fileWildcards
-                        .replace("{name}", fileName)
-                ),
-                FileChooser.ExtensionFilter(
-                    "Required Files (${configurations.paintingface.fileWildcards})"
-                        .replace("{name}", continuation.taskName),
-                    configurations.paintingface.fileWildcards
-                        .replace("{name}", continuation.taskName)
-                ),
+                FileChooser.ExtensionFilter("Required Files ($wcf)", wcf),
+                FileChooser.ExtensionFilter("Required Files ($wct)", wct),
                 FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
             ),
             File(configurations.paintingface.importFaceFilePath)

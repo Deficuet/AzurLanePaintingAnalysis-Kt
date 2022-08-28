@@ -236,7 +236,10 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                         with(mergeInfo) {
                             spinner(
                                 -this.image.width - pastePoint.x.toInt(),
-                                continuation.baseMergeInfo.image.width - pastePoint.x.toInt(),
+                                with(continuation.baseMergeInfo) {
+                                    (maxOf(rect.size.x.roundToInt(), rawSize.x.toInt()) * scale.x)
+                                        .roundToInt()
+                                } - pastePoint.x.toInt(),
                                 offsetX, editable = true
                             ) {
                                 tooltip("正方向为右方")
@@ -251,7 +254,10 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                             }
                             spinner(
                                 -this.image.height - pastePoint.y.toInt(),
-                                continuation.baseMergeInfo.image.height - pastePoint.y.toInt(),
+                                with(continuation.baseMergeInfo) {
+                                    (maxOf(rect.size.y.roundToInt(), rawSize.y.toInt()) * scale.y)
+                                        .roundToInt()
+                                } - pastePoint.y.toInt(),
                                 offsetY, editable = true
                             ) {
                                 tooltip("正方向为上方")
