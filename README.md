@@ -1,6 +1,6 @@
 Q: 道理我都懂但它怎么这么大
 
-A: 因为我打包了整个opencv
+A: <s>因为我打包了整个opencv</s> 已经精简掉了一半opencv，必要的部分仍然这么大
 
 # AzurLanePaintingAnalysis
 通过分析AssetBundle自动计算并将多张立绘和差分表情组合成一个完整的立绘图片
