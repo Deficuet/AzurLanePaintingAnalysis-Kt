@@ -29,7 +29,8 @@ dependencies {
     implementation 'com.github.Deficuet:UnityKt:v0.0.1-alpha.7'
     implementation 'net.mamoe.yamlkt:yamlkt:0.10.2'
     implementation 'org.json:json:20220320'
-    implementation 'org.bytedeco:javacv-platform:1.5.7'
+    implementation 'org.bytedeco:javacv:1.5.7'
+    implementation 'org.bytedeco:opencv-platform:4.5.5-1.5.7'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
 }
@@ -37,7 +38,7 @@ dependencies {
 shadowJar {
     archiveBaseName.set("ALPA")
     archiveClassifier.set("")
-    archiveVersion.set("0.0.1-alpha.2")
+    archiveVersion.set("0.0.1-alpha.3")
     zip64 = true
 }
 
