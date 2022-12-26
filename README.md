@@ -19,10 +19,10 @@ A: <s>因为我打包了整个opencv</s> 已经精简掉了一半opencv，必要
   - [差分接头](#差分接头)
 
 ### 立绘合并
-![image](https://user-images.githubusercontent.com/36525579/163659659-baebddf8-b848-45ee-8154-b46daea25081.png)
+![image](https://user-images.githubusercontent.com/36525579/209576501-2a6e3e92-f6a1-48ad-af20-bef230ccb2a8.png)
 
 ### 差分表情接头
-![image](https://user-images.githubusercontent.com/36525579/163659667-325deefe-2280-4523-9459-8caa688757f7.png)
+![image](https://user-images.githubusercontent.com/36525579/209576514-26750ed6-a719-4996-8a84-0a2b8c582f79.png)
 
 
 基本布局和用法与[AzurLanePaintingAnalyzer](https://github.com/Deficuet/AzurLanePaintingAnalyzer)相同
@@ -53,6 +53,11 @@ A: <s>因为我打包了整个opencv</s> 已经精简掉了一半opencv，必要
 |   7级   |  7秒 |
 |   8级   | 15秒 |
 |   9级   | 37秒 |
+
+- ### 自动寻找立绘并导入
+![image](https://user-images.githubusercontent.com/36525579/209576558-75ed5654-b567-4e25-bb6e-9a4e24728063.png)
+
+目前只对立绘合并功能有用。解析完AssetBundle后自动在设置的立绘文件夹下寻找、导入及合并。找不到立绘将会打断自动导入的流程，此时需要手动导入。
 
 - ### 解析AssetBundle
 不再使用Unity Tools的WebExtractor以及binary2text。现在解析AssetBundle使用的是我自己写的[UnityKt](https://github.com/Deficuet/UnityKt)，基于[AssetStudio](https://github.com/Perfare/AssetStudio)并拓展了少量属性，免去了大量的文件IO。同时所有`Object`都是惰性加载，只有访问其属性时才会加载，节省了大量时间
