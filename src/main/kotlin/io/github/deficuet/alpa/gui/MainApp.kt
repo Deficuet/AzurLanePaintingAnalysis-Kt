@@ -53,6 +53,15 @@ class MainPanel: View("ALPA") {
                         }
                     )
                 }
+                checkbox("自动寻找立绘") {
+                    isSelected = configurations.painting.autoImport
+                    hboxConstraints { marginLeft = 30.0 }
+                    selectedProperty().addListener(
+                        ChangeListener { _, _, new ->
+                            configurations.painting.autoImport = new
+                        }
+                    )
+                }
             }
         }
         tabpane {
@@ -78,8 +87,8 @@ abstract class PanelTemplate(name: String): View(name) {
     var previewTabPane: TabPane by singleAssign()
     var previewMainImageView: ImageView by singleAssign()
     var saveButton: Button by singleAssign()
-    protected var importFileZone: VBox by singleAssign()
     private var errorLabel: Label by singleAssign()
+    protected var importFileZone: VBox by singleAssign()
 
     override val root = hbox {
         vbox {
@@ -98,6 +107,7 @@ abstract class PanelTemplate(name: String): View(name) {
                             action {
                                 isDisable = true
                                 functions.importFile()
+                                functions.finishImport()
                                 isDisable = false
                             }
                         }
@@ -178,6 +188,11 @@ abstract class PanelTemplate(name: String): View(name) {
                 previewMainImageView = imageview(initialPreview)
             }
         }
+    }
+
+    fun showDebugInfo(msg: String) {
+        errorLabel.textFill = Color.BLUE
+        errorString.value = msg
     }
 
     fun reportBundleError(msg: String = "AssetBundle不可用") {

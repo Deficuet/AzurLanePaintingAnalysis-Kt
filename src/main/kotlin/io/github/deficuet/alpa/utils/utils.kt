@@ -49,14 +49,15 @@ val defaultConfigurations by lazy {
         painting = Configurations.PaintingSetting(
             importFilesPath = "C:/Users",
             importPaintingPath = "C:/Users",
-            wildcards = "*{name}.png;*{name}_group.png;*{name}_exp.png"
+            wildcards = "*{name}.png;*{name}_group.png;*{name}_exp.png",
+            autoImport = false,
         ),
         paintingface = Configurations.PaintingfaceSetting(
             importFilesPath = "C:/Users",
             importFace2DPath = "C:/Users",
             importFaceFilePath = "C:/Users",
             imageWildcards = "?.png;{name}_head.png",
-            fileWildcards = "{name}"
+            fileWildcards = "{name}",
         ),
         outputCompressionLevel = 7
     )

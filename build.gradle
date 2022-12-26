@@ -1,8 +1,8 @@
 plugins {
     id 'java'
     id 'application'
-    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.6.10'
+    id 'org.jetbrains.kotlin.jvm' version '1.7.20'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.7.20'
     id 'org.openjfx.javafxplugin' version '0.0.12'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
@@ -26,9 +26,9 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-gradle-plugin"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-core"
     implementation 'no.tornado:tornadofx:1.7.20'
-    implementation 'com.github.Deficuet:UnityKt:v0.0.1-alpha.7'
-    implementation 'net.mamoe.yamlkt:yamlkt:0.10.2'
-    implementation 'org.json:json:20220320'
+    implementation 'com.github.Deficuet:UnityKt:v0.0.1-beta.2'
+    implementation 'net.mamoe.yamlkt:yamlkt:0.12.0'
+    implementation 'org.json:json:20220924'
     implementation 'org.bytedeco:javacv:1.5.7'
     implementation 'org.bytedeco:opencv-platform:4.5.5-1.5.7'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
@@ -38,7 +38,7 @@ dependencies {
 shadowJar {
     archiveBaseName.set("ALPA")
     archiveClassifier.set("")
-    archiveVersion.set("0.0.1-alpha.3")
+    archiveVersion.set("0.0.1-alpha.4")
     zip64 = true
 }
 

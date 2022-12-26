@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
 
 class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunctions() {
     lateinit var continuation: PaintingfaceTaskContinuation
-    private lateinit var manager: AssetManager
+    private lateinit var manager: UnityAssetManager
 
     override fun importFile() {
         val files = chooseFile(
@@ -27,11 +27,11 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         )
         if (files.isEmpty()) return
         val file = files[0]
-        if (::manager.isInitialized) manager.closeAll()
+        if (::manager.isInitialized) manager.close()
         if (::continuation.isInitialized) {
             continuation.childrenMergeInfoList.clear()
         }
-        manager = AssetManager()
+        manager = UnityAssetManager()
         continuation = PaintingfaceTaskContinuation(file)
         configurations.paintingface.importFilesPath = continuation.importPath
         gui.currentTaskString.value = "当前任务：${continuation.taskName}"
@@ -75,7 +75,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             return gui.reportBundleError()
         }
         val baseRect = baseGameObject.mTransform[0] as RectTransform
-        val baseChildren = baseRect.mChildren.getAllInstanceOf<RectTransform>()
+        val baseChildren = baseRect.mChildren.allObjectsOf<RectTransform>()
         val face = baseChildren.find { it.mGameObject.getObj()!!.mName == "face" }
             ?: return gui.reportBundleError("没有可用的数据")
         val correction = with(gui) {
@@ -91,10 +91,8 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
                     if (!Files.exists(Path.of("${continuation.importPath}/${d}"))) {
                         return gui.reportBundleError("依赖项缺失")
                     } else {
-                        manager.let {
-                            it.loadFile("${continuation.importPath}/${d}").objects
-                                .any { obj -> obj is Mesh }
-                        }
+                        manager.loadFile("${continuation.importPath}/${d}").objects
+                            .any { obj -> obj is Mesh }
                     }
                 } else {
                     bundleContext.objects.any { it is Mesh }

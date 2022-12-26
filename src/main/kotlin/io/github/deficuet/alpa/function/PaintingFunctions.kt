@@ -21,7 +21,7 @@ import kotlin.math.min
 
 class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
     lateinit var continuation: PaintingTaskContinuation
-    private lateinit var manager: AssetManager
+    private lateinit var manager: UnityAssetManager
 
     override fun importFile() {
         val files = chooseFile(
@@ -30,11 +30,10 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         )
         if (files.isEmpty()) return
         val file = files[0]
-        if (::manager.isInitialized) manager.closeAll()
         if (::continuation.isInitialized) {
             continuation.childrenMergeInfoList.clear()
         }
-        manager = AssetManager()
+        manager = UnityAssetManager()
         continuation = PaintingTaskContinuation(file)
         configurations.painting.importFilesPath = continuation.importPath
         gui.currentTaskString.value = "当前任务：${continuation.taskName}"
@@ -93,7 +92,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         val rectList = mutableListOf<RectTransform>()
         val baseRect = baseGameObject.mTransform[0] as RectTransform
         rectList.add(baseRect)
-        val baseChildren = baseRect.mChildren.getAllInstanceOf<RectTransform>()
+        val baseChildren = baseRect.mChildren.allObjectsOf<RectTransform>()
         if (baseChildren.none { it.mGameObject.getObj()!!.mName in arrayOf("layers", "paint") }) {
             return gui.reportBundleError("无需合并")
         }
@@ -104,7 +103,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
             }.takeUnless {
                 it.isEmpty()
             }?.forEach { layers ->
-                val children = layers.mChildren.getAllInstanceOf<RectTransform>()
+                val children = layers.mChildren.allObjectsOf<RectTransform>()
                 rectList.addAll(children)
                 val layersOrigin = (layers.mAnchorMax - layers.mAnchorMin) * baseRect.size * layers.mPivot +
                     layers.mAnchorMin * baseRect.size + layers.mAnchoredPosition -
@@ -129,7 +128,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                 )
             }
         }
-        val texManager = AssetManager().apply {
+        val texManager = UnityAssetManager().apply {
             loadFiles(
                 *gui.dependenciesList
                     .filter { it.endsWith("_tex") }
@@ -139,20 +138,18 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         }
         val requiredList = rectList.map { rect ->
             rect.mGameObject.getObj()!!.mComponents
-                .map { manager.objects.objectFromPathID(it.mPathID)!! }
                 .firstObjectOf<MonoBehaviour>()
-                .json!!.getJSONObject("m_Sprite")
+                .typeTreeJson!!.getJSONObject("m_Sprite")
                 .getLong("m_PathID")
                 .let { pathID ->
-                    texManager.objects.objectFromPathID(pathID)!!
-                        .assetFile.root.name
+                    texManager.objects.objectFromPathID<Object>(pathID).assetFile.root.name
                 }.split("_tex")[0]
         }
         for ((i, mergeInfo) in continuation.mergeInfoList.withIndex()) {
             mergeInfo.name = requiredList[i]
         }
         gui.requiredImageNameList.addAll(requiredList)
-        texManager.closeAll()
+        texManager.close()
         with(continuation.extraPixel) {
             this[0] = continuation.mergeInfoList
                 .minOf { it.pastePoint.x }
@@ -173,6 +170,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                 Vector2(this[0].toDouble(), this[1].toDouble())
             }
         }
+        manager.close()
         activeImport()
     }
 
@@ -186,12 +184,35 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         }
     }
 
+    override fun finishImport() {
+        if (configurations.painting.autoImport) {
+            for (name in gui.requiredImageNameList) {
+                gui.showDebugInfo("自动导入：$name")
+                val file = configurations.painting.wildcards.replace("{name}", name)
+                    .split(";").map {
+                        File("${configurations.painting.importPaintingPath}/${it.trim('*')}")
+                    }.firstOrNull { it.exists() }
+                if (file == null) {
+                    gui.reportBundleError("导入失败：找不到$name")
+                    break
+                }
+                val index = gui.requiredImageListView.selectionModel.selectedIndex
+                processPainting(
+                    file, name, index,
+                    continuation.mergeInfoList[index]
+                )
+            }
+            gui.errorString.value = ""
+        }
+    }
+
     override fun importPainting() {
         val paintingName = gui.requiredImageListView.selectionModel.selectedItem
         val paintingIndex = gui.requiredImageListView.selectionModel.selectedIndex
         val wc = configurations.painting.wildcards.replace("{name}", paintingName)
         val mergeInfo = continuation.mergeInfoList[paintingIndex]
-        val files = chooseFile("导入立绘",
+        val files = chooseFile(
+            "导入立绘",
             arrayOf(
                 FileChooser.ExtensionFilter("Required Files ($wc)", wc),
                 FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
@@ -199,8 +220,13 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
             File(configurations.painting.importPaintingPath)
         )
         if (files.isEmpty()) return
-        val imageFile = files[0]
-        configurations.painting.importPaintingPath = imageFile.parent
+        gui.errorString.value = ""
+        val f = files[0]
+        configurations.painting.importPaintingPath = f.parent
+        processPainting(f, paintingName, paintingIndex, mergeInfo)
+    }
+
+    private fun processPainting(imageFile: File, name: String, index: Int, mergeInfo: PaintingMergeInfo) {
         val image = ImageIO.read(imageFile)
         val pre = with(mergeInfo) {
             val w = maxOf(rawSize.x.toInt(), image.width)
@@ -209,7 +235,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
             val y = (maxOf(rect.size.y.roundToInt(), h) * scale.y).roundToInt()
             BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR).paste(image.flipY(), 0, 0).resize(x, y)
         }
-        val painting = if (paintingIndex == 0) {
+        val painting = if (index == 0) {
             with(continuation.extraPixel) {
                 val w = pre.width + this[0] + this[2]
                 val h = pre.height + this[1] + this[3]
@@ -223,13 +249,13 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         }
         mergePainting()
         with(gui.previewTabPane) {
-            val tab = Tab(paintingName).apply {
+            val tab = Tab(name).apply {
                 vbox {
                     imageview(
                         mergeInfo.exhibit.createPreview(height = 478)
                     )
                     hbox {
-                        isDisable = paintingIndex == 0
+                        isDisable = index == 0
                         alignment = Pos.CENTER
                         vboxConstraints { marginTop = 16.0 }
                         label("横向偏移：")
@@ -285,7 +311,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
             if (mergeInfo.displayTab != null) {
                 tabs.remove(mergeInfo.displayTab)
             }
-            tabs.add(min(tabs.size, paintingIndex + 1), tab)
+            tabs.add(min(tabs.size, index + 1), tab)
             mergeInfo.displayTab = tab
         }
         with(gui) {

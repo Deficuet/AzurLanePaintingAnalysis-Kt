@@ -8,7 +8,6 @@ import javafx.scene.image.Image as ImageFX
 import java.awt.image.BufferedImage
 import java.io.File
 import kotlin.reflect.KProperty
-import kotlin.reflect.KProperty0
 
 abstract class TaskContinuation(importFile: File) {
     val filePath: String = importFile.absolutePath
@@ -50,7 +49,7 @@ class PaintingMergeInfo(
     override var pastePoint: Vector2 = Vector2.Zero
 ): MergeInfo() {
     val rawSize = rect.mGameObject.getObj()!!.mComponents.mapNotNull { it.getObj() }
-        .firstObjectOf<MonoBehaviour>().json!!.getJSONObject("mRawSpriteSize")
+        .firstObjectOf<MonoBehaviour>().typeTreeJson!!.getJSONObject("mRawSpriteSize")
         .let { Vector2(it.getDouble("x"), it.getDouble("y")) }
 
     var offsetX = 0
@@ -77,7 +76,7 @@ class PaintingfaceMergeInfo(
     )
 }
 
-class LazyMutableImageLoader<T: Any>(private val loaderProperty: KProperty0<() -> T>) {
+class LazyMutableImageLoader<T: Any>(private val loaderProperty: () -> (() -> T)) {
     private lateinit var loader: () -> T
     private lateinit var value: T
 

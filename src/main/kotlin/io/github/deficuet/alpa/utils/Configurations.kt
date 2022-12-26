@@ -12,7 +12,8 @@ data class Configurations(
     data class PaintingSetting(
         var importFilesPath: String,
         var importPaintingPath: String,
-        var wildcards: String
+        var wildcards: String,
+        var autoImport: Boolean
     )
 
     @Serializable

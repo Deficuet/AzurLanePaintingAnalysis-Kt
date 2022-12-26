@@ -8,6 +8,7 @@ abstract class BackendFunctions {
     abstract fun importFile()
     abstract fun analyzeFile()
     abstract fun activeImport()
+    open fun finishImport() {  }
     abstract fun importPainting()
     abstract fun mergePainting()
     abstract fun saveMergedPainting()
