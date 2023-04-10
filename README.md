@@ -5,6 +5,11 @@ A: <s>因为我打包了整个opencv</s> 已经精简掉了一半opencv，必要
 # AzurLanePaintingAnalysis
 通过分析AssetBundle自动计算辅助将多张立绘和差分表情组合成一个完整的立绘图片
 
+**不提供从素材文件还原立绘的功能，即使用前提是用户手上有还原好的各部分立绘。**
+
+例如马耶布雷泽原皮被拆成了四部分，需要四张还原好的各部分立绘
+
+
 重构了之前写的Python项目[AzurLanePaintingAnalyzer](https://github.com/Deficuet/AzurLanePaintingAnalyzer)
 
 ### 目录
