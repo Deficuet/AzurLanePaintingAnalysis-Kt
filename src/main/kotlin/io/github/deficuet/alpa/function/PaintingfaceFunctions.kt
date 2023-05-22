@@ -23,7 +23,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
     override fun importFile() {
         val files = chooseFile(
             "选择文件", allTypeFilter,
-            File(configurations.paintingface.importFilesPath)
+            File(configurations.paintingface.importFilesPath).withDefaultPath()
         )
         if (files.isEmpty()) return
         val file = files[0]
@@ -66,7 +66,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         if (bundleContext.objects.isEmpty()) {
             return gui.reportBundleError()
         }
-        val bundle = bundleContext.objects.firstObjectOf<AssetBundle>()
+        val bundle = bundleContext.objectList.firstObjectOf<AssetBundle>()
         val baseGameObject = bundle.mContainer[0].second.asset.getObj()
         if (baseGameObject == null || baseGameObject !is GameObject) {
             return gui.reportBundleError()
@@ -91,11 +91,11 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
                     if (!Files.exists(Path.of("${continuation.importPath}/${d}"))) {
                         return gui.reportBundleError("依赖项缺失")
                     } else {
-                        manager.loadFile("${continuation.importPath}/${d}").objects
+                        manager.loadFile("${continuation.importPath}/${d}").objectList
                             .any { obj -> obj is Mesh }
                     }
                 } else {
-                    bundleContext.objects.any { it is Mesh }
+                    bundleContext.objectList.any { it is Mesh }
                 }
                 if (needDecode) {
                     Vector2(1.0, 0.0)
@@ -125,7 +125,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
                 FileChooser.ExtensionFilter("Required Files ($wc)", wc),
                 FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
             ),
-            File(configurations.painting.importPaintingPath)
+            File(configurations.painting.importPaintingPath).withDefaultPath()
         )
         if (files.isEmpty()) return
         val imageFile = files[0]
@@ -160,7 +160,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
                 FileChooser.ExtensionFilter("Required Files ($wct)", wct),
                 FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
             ),
-            File(configurations.paintingface.importFaceFilePath)
+            File(configurations.paintingface.importFaceFilePath).withDefaultPath()
         )
         if (files.isEmpty()) return
         with(gui) {
@@ -175,7 +175,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             return gui.reportFaceBundleError("导入差分表情文件时出错")
         }
         if (faceContext.objects.isEmpty()) return gui.reportFaceBundleError()
-        val sprites = faceContext.objects.allObjectsOf<Sprite>().toMutableList()
+        val sprites = faceContext.objectList.filterIsInstance<Sprite>().toMutableList()
         if (sprites.isEmpty()) return gui.reportFaceBundleError()
         if (!sprites.all { sprite -> sprite.mName.all { it.isDigit() } }) {
             return gui.reportFaceBundleError()
@@ -225,7 +225,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
                     "All Images (*.png)", "*.png"
                 )
             ),
-            File(configurations.paintingface.importFace2DPath)
+            File(configurations.paintingface.importFace2DPath).withDefaultPath()
         )
         if (files.isEmpty()) return
         val imageFile = files[0]

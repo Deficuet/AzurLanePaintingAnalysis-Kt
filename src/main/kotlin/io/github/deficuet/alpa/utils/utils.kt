@@ -2,7 +2,7 @@ package io.github.deficuet.alpa.utils
 
 import net.mamoe.yamlkt.Yaml
 import io.github.deficuet.unitykt.data.RectTransform
-import io.github.deficuet.unitykt.getObj
+import io.github.deficuet.unitykt.getObjAs
 import io.github.deficuet.unitykt.math.Vector2
 import javafx.event.EventTarget
 import javafx.scene.Node
@@ -37,8 +37,12 @@ val RectTransform.size: Vector2
     get() = if (mFather.isNull) {
         mSizeDelta
     } else {
-        mSizeDelta + (mAnchorMax - mAnchorMin) * (mFather.getObj()!! as RectTransform).size
+        mSizeDelta + (mAnchorMax - mAnchorMin) * mFather.getObjAs<RectTransform>().size
     }
+
+fun File.withDefaultPath(defaultPath: String = "C:/Users"): File {
+    return if (exists()) this else File(defaultPath)
+}
 
 val allTypeFilter = arrayOf(
     ExtensionFilter("All types", "*.*")

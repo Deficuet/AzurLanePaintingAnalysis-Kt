@@ -1,14 +1,15 @@
 package io.github.deficuet.alpa.utils
 
+import ar.com.hjg.pngj.FilterType
+import it.geosolutions.imageio.plugins.png.PNGWriter
 import javafx.embed.swing.SwingFXUtils
-import org.bytedeco.javacv.Java2DFrameUtils
 import javafx.scene.image.Image as ImageFX
 import java.awt.*
 import java.awt.geom.AffineTransform
 import java.io.File
 import kotlin.math.roundToInt
-import org.bytedeco.opencv.global.opencv_imgcodecs
 import java.awt.image.*
+import java.io.FileOutputStream
 
 inline fun BufferedImage(width: Int, height: Int, type: Int, initializer: Graphics2D.() -> Unit): BufferedImage {
     return BufferedImage(width, height, type).apply {
@@ -61,23 +62,12 @@ fun BufferedImage.flipY(): BufferedImage {
 
 fun BufferedImage.save(dst: File, compressionLevel: Int = 7) {
     assert(type == BufferedImage.TYPE_4BYTE_ABGR)
-    opencv_imgcodecs.imwrite(
-        dst.absolutePath,
-        Java2DFrameUtils.toMat(
-            BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR).apply {
-                data = Raster.createRaster(
-                    ComponentSampleModel(
-                        this@save.raster.dataBuffer.dataType, this@save.width, this@save.height,
-                        4, this@save.width * 4, intArrayOf(0, 3, 2, 1)
-                    ), this@save.raster.dataBuffer, null
-                )
-            }
-        ),
-        intArrayOf(
-            opencv_imgcodecs.IMWRITE_PNG_COMPRESSION, compressionLevel,
-            opencv_imgcodecs.IMWRITE_PNG_STRATEGY, opencv_imgcodecs.IMWRITE_PNG_STRATEGY_FILTERED
+    FileOutputStream(dst).use { output ->
+        PNGWriter().writePNG(
+            this, output, (9f - compressionLevel) / 9f,
+            FilterType.FILTER_DEFAULT
         )
-    )
+    }
 }
 
 fun BufferedImage.toFXImage(): ImageFX = SwingFXUtils.toFXImage(this, null)

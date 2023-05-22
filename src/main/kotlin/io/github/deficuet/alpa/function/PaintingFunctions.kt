@@ -26,7 +26,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
     override fun importFile() {
         val files = chooseFile(
             "选择文件", allTypeFilter,
-            File(configurations.painting.importFilesPath)
+            File(configurations.painting.importFilesPath).withDefaultPath()
         )
         if (files.isEmpty()) return
         val file = files[0]
@@ -61,7 +61,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         if (bundleContext.objects.isEmpty()) {
             return gui.reportBundleError()
         }
-        val bundle = bundleContext.objects.firstObjectOf<AssetBundle>()
+        val bundle = bundleContext.objectList.firstObjectOf<AssetBundle>()
         if (bundle.mDependencies.isNotEmpty()) {
             with(gui) {
                 dependenciesList.addAll(bundle.mDependencies.map {
@@ -193,7 +193,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                         File("${configurations.painting.importPaintingPath}/${it.trim('*')}")
                     }.firstOrNull { it.exists() }
                 if (file == null) {
-                    gui.reportBundleError("导入失败：找不到$name")
+                    gui.reportBundleError("导入失败：找不到 $name")
                     break
                 }
                 val index = gui.requiredImageListView.selectionModel.selectedIndex
@@ -217,7 +217,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                 FileChooser.ExtensionFilter("Required Files ($wc)", wc),
                 FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
             ),
-            File(configurations.painting.importPaintingPath)
+            File(configurations.painting.importPaintingPath).withDefaultPath()
         )
         if (files.isEmpty()) return
         gui.errorString.value = ""

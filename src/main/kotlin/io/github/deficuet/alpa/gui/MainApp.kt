@@ -3,6 +3,7 @@ package io.github.deficuet.alpa.gui
 import net.mamoe.yamlkt.Yaml
 import io.github.deficuet.alpa.function.BackendFunctions
 import io.github.deficuet.alpa.utils.*
+import javafx.application.Platform
 import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Pos
 import javafx.scene.control.*
@@ -190,12 +191,12 @@ abstract class PanelTemplate(name: String): View(name) {
         }
     }
 
-    fun showDebugInfo(msg: String) {
+    fun showDebugInfo(msg: String) = Platform.runLater {
         errorLabel.textFill = Color.BLUE
         errorString.value = msg
     }
 
-    fun reportBundleError(msg: String = "AssetBundle不可用") {
+    fun reportBundleError(msg: String = "AssetBundle不可用") = Platform.runLater {
         errorLabel.textFill = errorTextFill
         errorString.value = msg
     }
