@@ -1,20 +1,23 @@
 package io.github.deficuet.alpa.gui
 
 import io.github.deficuet.alpa.function.PaintingFunctions
-import io.github.deficuet.alpa.utils.*
+import io.github.deficuet.alpa.utils.PaintingMergeInfo
+import io.github.deficuet.alpa.utils.onUserSelectModified
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Pos
-import javafx.scene.control.*
+import javafx.scene.control.Button
+import javafx.scene.control.TableColumn
 import javafx.scene.paint.Color
 import javafx.util.Callback
 import tornadofx.*
 
-class PaintingPanel: PanelTemplate("立绘合并") {
+class PaintingPanel: PanelTemplate<PaintingMergeInfo>("立绘合并") {
     override val functions = PaintingFunctions(this)
     val dependenciesList = observableListOf<String>()
     var dependenciesColumn: TableColumn<String, String> by singleAssign()
     val requiredPaintingName = SimpleStringProperty("目标名称：N/A")
+    var importPaintingButton: Button by singleAssign()
 
     init {
         with(importFileZone) {
@@ -34,12 +37,30 @@ class PaintingPanel: PanelTemplate("立绘合并") {
         importImageTitledPane.text = "导入立绘"
         with(importImageButtonZone) {
             alignment = Pos.CENTER_LEFT
-            button("添加立绘") {
+            importPaintingButton = button("添加立绘") {
                 minWidth = 80.0; minHeight = 30.0
                 action {
                     isDisable = true
-                    functions.importPainting()
-                    isDisable = false
+                    importFileButton.isDisable = true
+                    val file = functions.importPainting()
+                    if (file != null) {
+                        runAsync {
+                            importImageTitledPane.isDisable = true
+                            saveButtonZone.isDisable = true
+                            with(requiredImageListView.selectionModel) {
+                                functions.processPainting(
+                                    file, selectedIndex, selectedItem
+                                )
+                            }
+                            isDisable = false
+                            importFileButton.isDisable = false
+                            importImageTitledPane.isDisable = false
+                            saveButtonZone.isDisable = false
+                        }
+                    } else {
+                        isDisable = false
+                        importFileButton.isDisable = false
+                    }
                 }
             }
             label(requiredPaintingName) {
@@ -48,14 +69,17 @@ class PaintingPanel: PanelTemplate("立绘合并") {
         }
         with(requiredImageListView) {
             cellFormat {
-                text = it
-                textFill = if (functions.continuation.mergeInfoList[index].isImported) {
-                    Color.BLUE
-                } else Color.BLACK
+                text = it.name
+                textFill = when (it.isImported) {
+                    true -> Color.BLUE
+                    else -> Color.BLACK
+                }
             }
             onUserSelectModified {
-                requiredPaintingName.value = "目标名称：$it"
+                requiredPaintingName.value = "目标名称：${it.name}"
             }
         }
+        saveButton.minWidth = 192.0
+        openFolderButton.minWidth = 192.0
     }
 }

@@ -1,98 +1,106 @@
 package io.github.deficuet.alpa.utils
 
-import io.github.deficuet.unitykt.*
-import io.github.deficuet.unitykt.data.*
-import io.github.deficuet.unitykt.math.*
+import io.github.deficuet.alp.TextureTransform
+import io.github.deficuet.alp.painting.PaintingTransform
+import io.github.deficuet.jimage.copy
+import io.github.deficuet.jimage.flipY
+import io.github.deficuet.jimage.paste
+import io.github.deficuet.unitykt.UnityAssetManager
 import javafx.scene.control.Tab
-import javafx.scene.image.Image as ImageFX
 import java.awt.image.BufferedImage
+import java.io.Closeable
 import java.io.File
-import kotlin.reflect.KProperty
+import javafx.scene.image.Image as ImageFX
 
-abstract class TaskContinuation(importFile: File) {
-    val filePath: String = importFile.absolutePath
-    val importPath: String = importFile.parent
+abstract class TaskContinuation(importFile: File): Closeable {
     val taskName: String = importFile.nameWithoutExtension
+    var width = -1
+    var height = -1
 }
 
 class PaintingTaskContinuation(importFile: File): TaskContinuation(importFile) {
-    lateinit var baseMergeInfo: PaintingMergeInfo
-    val childrenMergeInfoList = mutableListOf<PaintingMergeInfo>()
-    val mergeInfoList: List<PaintingMergeInfo>
-        get() {
-            return if (::baseMergeInfo.isInitialized) listOf(baseMergeInfo) + childrenMergeInfoList
-            else childrenMergeInfoList
-        }
-    val extraPixel = intArrayOf(0, 0, 0, 0)
     lateinit var mergedPainting: BufferedImage
+
+    override fun close() {  }
+}
+
+abstract class MergeInfo(
+    open val transform: TextureTransform,
+    val name: String
+) {
+    var isImported = false
+    lateinit var image: BufferedImage
+    var offsetX = 0
+    var offsetY = 0
+}
+
+class PaintingMergeInfo(
+    override val transform: PaintingTransform,
+    name: String
+): MergeInfo(transform, name) {
+    var displayTab: Tab? = null
+    lateinit var exhibit: ImageFX
 }
 
 class PaintingfaceTaskContinuation(importFile: File): TaskContinuation(importFile) {
     lateinit var baseMergeInfo: PaintingfaceMergeInfo
-    lateinit var faceMergeInfo: PaintingfaceMergeInfo
-    val childrenMergeInfoList = mutableListOf<PaintingfaceMergeInfo>()
-}
+    lateinit var faceTransform: TextureTransform
+    lateinit var manager: UnityAssetManager
+    var pasteX: Int = -1
+    var pasteY: Int = -1
 
-abstract class MergeInfo {
-    abstract val rect: RectTransform
-    abstract val scale: Vector2
-    abstract var pastePoint: Vector2
+    inner class PaintingfaceMergeInfo(
+        transform: TextureTransform,
+        name: String
+    ): MergeInfo(transform, name) {
+        val changedFlag = BooleanArray(3) { true }
 
-    lateinit var name: String
-    lateinit var image: BufferedImage
-    val isImported get() = ::image.isInitialized
-}
+        private lateinit var mergedPainting: BufferedImage
+        private lateinit var globalExhibit: ImageFX
+        private lateinit var localExhibit: ImageFX
 
-class PaintingMergeInfo(
-    override val rect: RectTransform,
-    override val scale: Vector2 = Vector2(1.0, 1.0),
-    override var pastePoint: Vector2 = Vector2.Zero
-): MergeInfo() {
-    val rawSize = rect.mGameObject.getObj()!!.mComponents.mapNotNull { it.getObj() }
-        .firstObjectOf<MonoBehaviour>().typeTreeJson!!.getJSONObject("mRawSpriteSize")
-        .let { Vector2(it.getDouble("x"), it.getDouble("y")) }
-
-    var offsetX = 0
-    var offsetY = 0
-    var displayTab: Tab? = null
-    lateinit var exhibit: BufferedImage
-}
-
-class PaintingfaceMergeInfo(
-    override val rect: RectTransform,
-    override val scale: Vector2 = Vector2(1.0, 1.0),
-    override var pastePoint: Vector2 = Vector2.Zero
-): MergeInfo() {
-    lateinit var mergePainting: () -> BufferedImage
-    lateinit var generateGlobalExhibit: () -> ImageFX
-    lateinit var generateLocalExhibit: () -> ImageFX
-
-    val mergedPainting by LazyMutableImageLoader(::mergePainting)
-    val globalExhibit by LazyMutableImageLoader(::generateGlobalExhibit)
-    val localExhibit by LazyMutableImageLoader(::generateLocalExhibit)
-
-    fun emptyCopy() = PaintingfaceMergeInfo(
-        rect, scale, pastePoint
-    )
-}
-
-class LazyMutableImageLoader<T: Any>(private val loaderProperty: () -> (() -> T)) {
-    private lateinit var loader: () -> T
-    private lateinit var value: T
-
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
-        if (!::loader.isInitialized) {
-            loader = loaderProperty()
-            value = loader()
-        } else {
-            val l = loaderProperty()
-            if (loader !== l) {
-                loader = l
-                value = loader()
+        @Synchronized
+        fun getMergedPainting(): BufferedImage {
+            if (changedFlag[0]) {
+                mergedPainting = baseMergeInfo.image.copy().paste(image, pasteX, pasteY)
+                changedFlag[0] = false
             }
+            return mergedPainting
         }
-        return value
+
+        @Synchronized
+        fun getGlobalExhibit(): ImageFX {
+            if (changedFlag[1]) {
+                globalExhibit = getMergedPainting().flipY().createPreview()
+                changedFlag[1] = false
+            }
+            return globalExhibit
+        }
+
+        @Synchronized
+        fun getLocalExhibit(): ImageFX {
+            if (changedFlag[2]) {
+                val p = getMergedPainting()
+                localExhibit = p.getSubimage(
+                    (pasteX - 32).coerceAtLeast(0),
+                    (pasteY - 32).coerceAtLeast(0),
+                    (image.width + 64).coerceAtMost(p.width - pasteX),
+                    (image.height + 64).coerceAtMost(p.height - pasteY)
+                ).flipY().createPreview()
+                changedFlag[2] = false
+            }
+            return localExhibit
+        }
+    }
+
+    fun createMergeInfo(transform: TextureTransform, name: String): PaintingfaceMergeInfo {
+        return PaintingfaceMergeInfo(transform, name)
+    }
+
+    override fun close() {
+        if (::manager.isInitialized) {
+            manager.close()
+        }
     }
 }
 
-operator fun <M: MergeInfo> List<M>.get(name: String) = first { it.name.contentEquals(name) }

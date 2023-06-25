@@ -1,14 +1,14 @@
 plugins {
     id 'java'
     id 'application'
-    id 'org.jetbrains.kotlin.jvm' version '1.7.20'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.7.20'
+    id 'org.jetbrains.kotlin.jvm' version '1.8.21'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.21'
     id 'org.openjfx.javafxplugin' version '0.0.12'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 group 'io.github.deficuet'
-version '1.0-SNAPSHOT'
+version '0.0.1-beta.1'
 mainClassName = "io.github.deficuet.alpa.gui.MainApp"
 
 javafx {
@@ -17,28 +17,42 @@ javafx {
 }
 
 repositories {
+    maven { url "https://www.brockmann-consult.de/mvn/os/" }
     mavenCentral()
     maven { url 'https://jitpack.io' }
+    maven {
+        url "http://maven.geo-solutions.it/"
+        allowInsecureProtocol = true
+    }
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib"
-    implementation "org.jetbrains.kotlin:kotlin-gradle-plugin"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-core"
     implementation 'no.tornado:tornadofx:1.7.20'
-    implementation 'com.github.Deficuet:UnityKt:v0.0.1-beta.2'
+    implementation 'com.github.Deficuet:UnityKt:v0.0.1-beta.2.3'
     implementation 'net.mamoe.yamlkt:yamlkt:0.12.0'
-    implementation 'org.json:json:20220924'
-    implementation 'org.bytedeco:javacv:1.5.7'
-    implementation 'org.bytedeco:opencv-platform:4.5.5-1.5.7'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
+    implementation 'org.json:json:20230227'
+    implementation 'com.github.Deficuet:JImageUtils:v0.0.2'
+    implementation 'com.github.Deficuet:AzurlanePaintingUtils:0.0.3'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+}
+
+jar {
+    manifest {
+        attributes "Specification-Title": "Java Advanced Imaging Image I/O Tools"
+        attributes "Specification-Version": "1.1"
+        attributes "Specification-Vendor": "Sun Microsystems, Inc."
+        attributes "Implementation-Title": "com.sun.media.imageio"
+        attributes "Implementation-Version": "1.1"
+        attributes "Implementation-Vendor": "Sun Microsystems, Inc."
+    }
 }
 
 shadowJar {
     archiveBaseName.set("ALPA")
     archiveClassifier.set("")
-    archiveVersion.set("0.0.1-alpha.4")
+    archiveVersion.set("0.0.1-beta.1")
     zip64 = true
 }
 

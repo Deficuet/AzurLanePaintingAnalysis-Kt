@@ -1,27 +1,27 @@
 package io.github.deficuet.alpa.utils
 
-import net.mamoe.yamlkt.Yaml
-import io.github.deficuet.unitykt.data.RectTransform
-import io.github.deficuet.unitykt.getObjAs
-import io.github.deficuet.unitykt.math.Vector2
+import io.github.deficuet.alpa.gui.PanelTemplate
+import io.github.deficuet.jimage.fancyBufferedImage
+import javafx.application.Platform
 import javafx.event.EventTarget
 import javafx.scene.Node
 import javafx.scene.control.*
 import javafx.scene.control.skin.TableColumnHeader
-import javafx.scene.input.*
+import javafx.scene.input.InputEvent
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
+import javafx.scene.input.MouseEvent
 import javafx.stage.FileChooser.ExtensionFilter
-import javafx.scene.paint.Color as ColorFX
+import net.mamoe.yamlkt.Yaml
 import java.awt.*
 import java.awt.image.BufferedImage
 import java.io.File
-import kotlin.math.round
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.FutureTask
+import javafx.scene.paint.Color as ColorFX
 
-val initialPreview = BufferedImage(864, 540, BufferedImage.TYPE_INT_ARGB) {
-    setRenderingHints(mapOf(
-        RenderingHints.KEY_TEXT_ANTIALIASING to RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
-        RenderingHints.KEY_STROKE_CONTROL to RenderingHints.VALUE_STROKE_NORMALIZE,
-        RenderingHints.KEY_FRACTIONALMETRICS to RenderingHints.VALUE_FRACTIONALMETRICS_ON
-    ))
+val initialPreview = fancyBufferedImage(864, 540, BufferedImage.TYPE_INT_ARGB) {
     font = Font("aria", Font.BOLD, 54)
     color = Color(116, 116, 116)
     val p = fontMetrics.stringWidth("Preview")
@@ -33,15 +33,18 @@ val initialPreview = BufferedImage(864, 540, BufferedImage.TYPE_INT_ARGB) {
     drawString("available", (864 - a) / 2, y + fontMetrics.height * 2)
 }.toFXImage()
 
-val RectTransform.size: Vector2
-    get() = if (mFather.isNull) {
-        mSizeDelta
-    } else {
-        mSizeDelta + (mAnchorMax - mAnchorMin) * mFather.getObjAs<RectTransform>().size
-    }
-
 fun File.withDefaultPath(defaultPath: String = "C:/Users"): File {
     return if (exists()) this else File(defaultPath)
+}
+
+fun generateFileName(raw: String): String {
+    var i = 1
+    var fileName: String
+    do {
+        fileName = "$raw#$i"
+        i++
+    } while (Files.exists(Path.of("${fileName}.png")))
+    return fileName
 }
 
 val allTypeFilter = arrayOf(
@@ -79,8 +82,6 @@ val configurations = if (configFile.exists()) {
 }
 
 val errorTextFill: ColorFX = ColorFX.rgb(187, 0, 17)
-
-fun Vector2.round() = Vector2(round(x), round(y))
 
 /**
  * Modified [tornadofx.onUserSelect]
@@ -124,5 +125,20 @@ fun EventTarget.isValidRowModified(): Boolean {
                 || this is TreeTableView<*> || this is ListCell<*> -> true
         this.parent != null -> this.parent.isValidRowModified()
         else -> false
+    }
+}
+
+fun <P: PanelTemplate<*>, T> runBlockingFX(gui: P, task: P.() -> T): T? {
+    return try {
+        if (Platform.isFxApplicationThread()) {
+            gui.task()
+        } else {
+            val future = FutureTask { gui.task() }
+            Platform.runLater(future)
+            future.get()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }

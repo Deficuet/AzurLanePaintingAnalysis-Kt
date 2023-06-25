@@ -1,17 +1,21 @@
 package io.github.deficuet.alpa.gui
 
-import net.mamoe.yamlkt.Yaml
 import io.github.deficuet.alpa.function.BackendFunctions
 import io.github.deficuet.alpa.utils.*
-import javafx.application.Platform
 import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Pos
 import javafx.scene.control.*
-import javafx.scene.layout.*
 import javafx.scene.image.ImageView
+import javafx.scene.layout.HBox
+import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
+import net.mamoe.yamlkt.Yaml
 import tornadofx.*
+
+fun main() {
+    launch<MainApp>()
+}
 
 class MainApp: App(MainPanel::class, PaintingfacePanel.ImportButtonStyle::class) {
     init {
@@ -27,6 +31,9 @@ class MainApp: App(MainPanel::class, PaintingfacePanel.ImportButtonStyle::class)
 
     override fun stop() {
         configFile.writeText(Yaml.encodeToString(Configurations.serializer(), configurations))
+        with(find(PaintingfacePanel::class)) {
+            functions.close()
+        }
         super.stop()
     }
 }
@@ -75,21 +82,23 @@ class MainPanel: View("ALPA") {
     }
 }
 
-abstract class PanelTemplate(name: String): View(name) {
+abstract class PanelTemplate<M: MergeInfo>(name: String): View(name) {
     abstract val functions: BackendFunctions
 
+    var importFileZone: VBox by singleAssign()
     val currentTaskString = SimpleStringProperty("当前任务：空闲中")
     var importFileButton: Button by singleAssign()
     val errorString = SimpleStringProperty()
     var importImageTitledPane: TitledPane by singleAssign()
     var importImageButtonZone: HBox by singleAssign()
-    val requiredImageNameList = observableListOf<String>()
-    var requiredImageListView: ListView<String> by singleAssign()
+    val requiredImageMergeInfoList = observableListOf<M>()
+    var requiredImageListView: ListView<M> by singleAssign()
     var previewTabPane: TabPane by singleAssign()
     var previewMainImageView: ImageView by singleAssign()
+    var saveButtonZone: HBox by singleAssign()
     var saveButton: Button by singleAssign()
+    var openFolderButton: Button by singleAssign()
     private var errorLabel: Label by singleAssign()
-    protected var importFileZone: VBox by singleAssign()
 
     override val root = hbox {
         vbox {
@@ -107,9 +116,20 @@ abstract class PanelTemplate(name: String): View(name) {
                             minWidth = 80.0; minHeight = 30.0
                             action {
                                 isDisable = true
-                                functions.importFile()
-                                functions.finishImport()
-                                isDisable = false
+                                importImageButtonZone.isDisable = true
+                                val file = functions.importFile()
+                                if (file != null) {
+                                    runAsync {
+                                        if (functions.analyzeFile(file)) {
+                                            functions.finishImport()
+                                        }
+                                        isDisable = false
+                                        importImageButtonZone.isDisable = false
+                                    }
+                                } else {
+                                    isDisable = false
+                                    importImageButtonZone.isDisable = false
+                                }
                             }
                         }
                         vbox {
@@ -133,7 +153,7 @@ abstract class PanelTemplate(name: String): View(name) {
                             marginLeft = 8.0; marginTop = 8.0
                         }
                     }
-                    requiredImageListView = listview(requiredImageNameList) {
+                    requiredImageListView = listview(requiredImageMergeInfoList) {
                         vboxConstraints {
                             marginTop = 16.0; marginLeft = 8.0
                             marginRight = 8.0; marginBottom = 8.0
@@ -151,21 +171,23 @@ abstract class PanelTemplate(name: String): View(name) {
                 vboxConstraints {
                     marginTop = 16.0
                 }
-                saveButton = button("保存") {
-                    minWidth = 192.0; minHeight = 30.0
-                    isDisable = true
-                    action {
+                saveButtonZone = hbox {
+                    saveButton = button("保存") {
+                        minHeight = 30.0
                         isDisable = true
-                        runAsync {
-                            functions.saveMergedPainting()
-                            isDisable = false
+                        action {
+                            saveButtonZone.isDisable = true
+                            runAsync {
+                                functions.saveMergedPainting()
+                                saveButtonZone.isDisable = false
+                            }
                         }
                     }
                 }
-                button("打开文件夹") {
+                openFolderButton = button("打开文件夹") {
                     tooltip("打开导出文件夹")
-                    hboxConstraints { marginLeft  = 14.0 }
-                    minWidth = 192.0; minHeight = 30.0
+                    minHeight = 30.0
+                    hboxConstraints { marginLeft = 16.0 }
                     action {
                         isDisable = true
                         functions.openFolder()
@@ -191,12 +213,12 @@ abstract class PanelTemplate(name: String): View(name) {
         }
     }
 
-    fun showDebugInfo(msg: String) = Platform.runLater {
+    fun showDebugInfo(msg: String) {
         errorLabel.textFill = Color.BLUE
         errorString.value = msg
     }
 
-    fun reportBundleError(msg: String = "AssetBundle不可用") = Platform.runLater {
+    fun reportBundleError(msg: String = "AssetBundle不可用") {
         errorLabel.textFill = errorTextFill
         errorString.value = msg
     }

@@ -1,14 +1,19 @@
 package io.github.deficuet.alpa.gui
 
 import io.github.deficuet.alpa.function.PaintingfaceFunctions
-import io.github.deficuet.alpa.utils.*
+import io.github.deficuet.alpa.utils.PaintingfaceTaskContinuation
+import io.github.deficuet.alpa.utils.errorTextFill
+import io.github.deficuet.alpa.utils.initialPreview
+import io.github.deficuet.alpa.utils.onUserSelectModified
 import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.Pos
-import javafx.scene.control.*
+import javafx.scene.control.Button
+import javafx.scene.control.Label
+import javafx.scene.control.Spinner
 import javafx.scene.image.ImageView
 import tornadofx.*
 
-class PaintingfacePanel: PanelTemplate("差分表情") {
+class PaintingfacePanel: PanelTemplate<PaintingfaceTaskContinuation.PaintingfaceMergeInfo>("差分表情") {
     override val functions = PaintingfaceFunctions(this)
     var importFromFileButton: Button by singleAssign()
     var importFromImageButton: Button by singleAssign()
@@ -18,8 +23,9 @@ class PaintingfacePanel: PanelTemplate("差分表情") {
     var spinnerY: Spinner<Int> by singleAssign()
     var reMergeButton: Button by singleAssign()
     val paintingfaceFileErrorString = SimpleStringProperty()
-    var paintingfaceFileErrorLabel: Label by singleAssign()
     var localPreviewImageView: ImageView by singleAssign()
+    var saveAllButton: Button by singleAssign()
+    private var paintingfaceFileErrorLabel: Label by singleAssign()
 
     init {
         with(importFileZone) {
@@ -54,11 +60,19 @@ class PaintingfacePanel: PanelTemplate("差分表情") {
                 hbox {
                     vboxConstraints { marginTop = 16.0 }
                     alignment = Pos.CENTER_LEFT
-                    reMergeButton = button("重新计算") {
+                    reMergeButton = button("重新合并") {
                         isDisable = true
                         minWidth = 80.0; minHeight = 30.0
                         action {
-                            functions.mergePainting()
+                            importFileZone.isDisable = true
+                            importImageTitledPane.isDisable = true
+                            saveButtonZone.isDisable = true
+                            runAsync {
+                                functions.mergePainting()
+                                importFileZone.isDisable = false
+                                importImageTitledPane.isDisable = false
+                                saveButtonZone.isDisable = false
+                            }
                         }
                     }
                     paintingfaceFileErrorLabel = label(paintingfaceFileErrorString) {
@@ -72,9 +86,22 @@ class PaintingfacePanel: PanelTemplate("差分表情") {
             button("导入主立绘") {
                 addClass(ImportButtonStyle.importButton)
                 action {
-                    isDisable = true
-                    functions.importPainting()
-                    isDisable = false
+                    importImageButtonZone.isDisable = true
+                    importFileZone.isDisable = true
+                    saveButtonZone.isDisable = true
+                    val file = functions.importPainting()
+                    if (file != null) {
+                        runAsync {
+                            functions.processPainting(file)
+                            importImageButtonZone.isDisable = false
+                            importFileZone.isDisable = false
+                            saveButtonZone.isDisable = false
+                        }
+                    } else {
+                        importImageButtonZone.isDisable = false
+                        importFileZone.isDisable = false
+                        saveButtonZone.isDisable = false
+                    }
                 }
             }
             importFromFileButton = button("导入差分 - 文件") {
@@ -82,9 +109,24 @@ class PaintingfacePanel: PanelTemplate("差分表情") {
                 addClass(ImportButtonStyle.importButton)
                 hboxConstraints { marginLeft = 16.0 }
                 action {
-                    isDisable = true
-                    functions.importFaceFromFile()
-                    isDisable = false
+                    importImageButtonZone.isDisable = true
+                    importFileZone.isDisable = true
+                    saveButtonZone.isDisable = true
+                    val file = functions.importFaceFromFile()
+                    if (file != null) {
+                        runAsync {
+                            requiredImageListView.isDisable = true
+                            functions.processFaceFile(file)
+                            importImageButtonZone.isDisable = false
+                            importFileZone.isDisable = false
+                            requiredImageListView.isDisable = false
+                            saveButtonZone.isDisable = false
+                        }
+                    } else {
+                        importImageButtonZone.isDisable = false
+                        importFileZone.isDisable = false
+                        saveButtonZone.isDisable = false
+                    }
                 }
             }
             importFromImageButton = button("导入差分 - 图片") {
@@ -92,21 +134,59 @@ class PaintingfacePanel: PanelTemplate("差分表情") {
                 addClass(ImportButtonStyle.importButton)
                 hboxConstraints { marginLeft = 16.0 }
                 action {
-                    isDisable = true
-                    functions.importFaceFromImage()
-                    isDisable = false
+                    importImageButtonZone.isDisable = true
+                    importFileZone.isDisable = true
+                    saveButtonZone.isDisable = true
+                    val file = functions.importFaceFromImage()
+                    if (file != null) {
+                        runAsync {
+                            requiredImageListView.isDisable = true
+                            functions.processFaceImage(file)
+                            importImageButtonZone.isDisable = false
+                            importFileZone.isDisable = false
+                            requiredImageListView.isDisable = false
+                            saveButtonZone.isDisable = false
+                        }
+                    } else {
+                        importImageButtonZone.isDisable = false
+                        importFileZone.isDisable = false
+                        saveButtonZone.isDisable = false
+                    }
                 }
             }
         }
-        requiredImageListView.isDisable = true
         with(requiredImageListView) {
+            isDisable = true
+            cellFormat {
+                text = it.name
+            }
             onUserSelectModified {
                 when (previewTabPane.selectionModel.selectedIndex) {
-                    0 -> previewMainImageView.image = functions.continuation.childrenMergeInfoList[it].globalExhibit
-                    1 -> localPreviewImageView.image = functions.continuation.childrenMergeInfoList[it].localExhibit
+                    0 -> {
+                        previewMainImageView.image = selectionModel.selectedItem.getGlobalExhibit()
+                    }
+                    1 -> {
+                        localPreviewImageView.image = selectionModel.selectedItem.getLocalExhibit()
+                    }
                 }
             }
         }
+        saveButton.minWidth = 122.0
+        with(saveButtonZone) {
+            saveAllButton = button("保存所有") {
+                minWidth = 122.0; minHeight = 30.0
+                hboxConstraints { marginLeft = 16.0 }
+                isDisable = true
+                action {
+                    saveButtonZone.isDisable = true
+                    runAsync {
+                        functions.saveAllMergedPainting()
+                        saveButtonZone.isDisable = false
+                    }
+                }
+            }
+        }
+        openFolderButton.minWidth = 123.0
         with(previewTabPane) {
             tab("局部预览") {
                 localPreviewImageView = imageview(initialPreview)
@@ -114,19 +194,22 @@ class PaintingfacePanel: PanelTemplate("差分表情") {
             isDisable = true
             selectionModel.selectedIndexProperty().addListener(
                 ChangeListener { _, _, new ->
-                    if (functions.continuation.childrenMergeInfoList.isNotEmpty()) {
+                    if (requiredImageMergeInfoList.isNotEmpty()) {
                         when (new) {
-                            0 -> previewMainImageView.image = functions.continuation.childrenMergeInfoList[
-                                    requiredImageListView.selectionModel.selectedItem
-                            ].globalExhibit
-                            1 -> localPreviewImageView.image = functions.continuation.childrenMergeInfoList[
-                                    requiredImageListView.selectionModel.selectedItem
-                            ].localExhibit
+                            0 -> previewMainImageView.image = requiredImageListView
+                                .selectionModel.selectedItem.getGlobalExhibit()
+                            1 -> localPreviewImageView.image = requiredImageListView
+                                .selectionModel.selectedItem.getLocalExhibit()
                         }
                     }
                 }
             )
         }
+    }
+
+    fun reportFaceBundleError(msg: String = "差分表情文件不可用") {
+        paintingfaceFileErrorLabel.textFill = errorTextFill
+        paintingfaceFileErrorString.value = msg
     }
 
     class ImportButtonStyle: Stylesheet() {

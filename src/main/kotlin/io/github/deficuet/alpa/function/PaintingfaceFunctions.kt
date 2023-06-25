@@ -1,45 +1,46 @@
 package io.github.deficuet.alpa.function
 
+import io.github.deficuet.alp.paintingface.PaintingfaceAnalyzeStatus
+import io.github.deficuet.alp.paintingface.analyzePaintingface
+import io.github.deficuet.alp.paintingface.scalePaintingface
 import io.github.deficuet.alpa.gui.PaintingfacePanel
 import io.github.deficuet.alpa.utils.*
-import io.github.deficuet.unitykt.*
-import io.github.deficuet.unitykt.data.*
-import io.github.deficuet.unitykt.math.Vector2
+import io.github.deficuet.jimage.BufferedImage
+import io.github.deficuet.jimage.flipY
+import io.github.deficuet.jimage.savePng
+import io.github.deficuet.unitykt.data.Sprite
+import io.github.deficuet.unitykt.getObj
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory
 import javafx.scene.paint.Color
 import javafx.stage.FileChooser
-import java.io.File
+import tornadofx.chooseFile
 import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
-import tornadofx.*
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.math.roundToInt
+import javax.imageio.ImageIO
 
 class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunctions() {
-    lateinit var continuation: PaintingfaceTaskContinuation
-    private lateinit var manager: UnityAssetManager
+    private lateinit var continuation: PaintingfaceTaskContinuation
 
-    override fun importFile() {
+    override fun importFile(): File? {
         val files = chooseFile(
             "选择文件", allTypeFilter,
             File(configurations.paintingface.importFilesPath).withDefaultPath()
         )
-        if (files.isEmpty()) return
+        if (files.isEmpty()) return null
         val file = files[0]
-        if (::manager.isInitialized) manager.close()
-        if (::continuation.isInitialized) {
-            continuation.childrenMergeInfoList.clear()
-        }
-        manager = UnityAssetManager()
-        continuation = PaintingfaceTaskContinuation(file)
-        configurations.paintingface.importFilesPath = continuation.importPath
-        gui.currentTaskString.value = "当前任务：${continuation.taskName}"
-        analyzeFile()
+        configurations.paintingface.importFilesPath = file.parent
+        return file
     }
 
-    override fun analyzeFile() {
-        with(gui) {
+    override fun analyzeFile(importFile: File): Boolean {
+        if (::continuation.isInitialized) {
+            continuation.close()
+        }
+        continuation = PaintingfaceTaskContinuation(importFile)
+        runBlockingFX(gui) {
+            currentTaskString.value = "当前任务：${continuation.taskName}"
             needMergeLabel.textFill = Color.BLACK
             needMergeString.value = "N/A"
             previewTabPane.selectionModel.select(0)
@@ -51,65 +52,41 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             spinnerY.isDisable = true
             spinnerY.valueFactory.value = 0
             reMergeButton.isDisable = true
-            requiredImageNameList.clear()
+            requiredImageMergeInfoList.clear()
             requiredImageListView.isDisable = true
             importFromFileButton.isDisable = true
             importFromImageButton.isDisable = true
             importImageTitledPane.isDisable = true
+            saveButton.isDisable = true
+            saveAllButton.isDisable = true
             paintingfaceFileErrorString.value = ""
         }
-        val bundleContext = try {
-            manager.loadFile(continuation.filePath)
-        } catch (e: Exception) {
-            return gui.reportBundleError()
+        val status = analyzePaintingface(importFile.toPath())
+        if (!status.succeed) {
+            runBlockingFX(gui) {
+                reportBundleError(status.message)
+            }
+            return false
         }
-        if (bundleContext.objects.isEmpty()) {
-            return gui.reportBundleError()
-        }
-        val bundle = bundleContext.objectList.firstObjectOf<AssetBundle>()
-        val baseGameObject = bundle.mContainer[0].second.asset.getObj()
-        if (baseGameObject == null || baseGameObject !is GameObject) {
-            return gui.reportBundleError()
-        }
-        if (baseGameObject.mTransform.isEmpty()) {
-            return gui.reportBundleError()
-        }
-        val baseRect = baseGameObject.mTransform[0] as RectTransform
-        val baseChildren = baseRect.mChildren.allObjectsOf<RectTransform>()
-        val face = baseChildren.find { it.mGameObject.getObj()!!.mName == "face" }
-            ?: return gui.reportBundleError("没有可用的数据")
-        val correction = with(gui) {
-            if (baseChildren.any { it.mGameObject.getObj()!!.mName in arrayOf("layers", "paint") }) {
+        status as PaintingfaceAnalyzeStatus
+        runBlockingFX(gui) {
+            if (status.requiresMerge) {
                 needMergeLabel.textFill = errorTextFill
                 needMergeString.value = "需要"
-                Vector2(2.0, 1.0)
             } else {
                 needMergeLabel.textFill = Color.web("#248C18")
                 needMergeString.value = "不需要"
-                val needDecode = if (bundle.mDependencies.isNotEmpty()) {
-                    val d = bundle.mDependencies[0].split('/').last()
-                    if (!Files.exists(Path.of("${continuation.importPath}/${d}"))) {
-                        return gui.reportBundleError("依赖项缺失")
-                    } else {
-                        manager.loadFile("${continuation.importPath}/${d}").objectList
-                            .any { obj -> obj is Mesh }
-                    }
-                } else {
-                    bundleContext.objectList.any { it is Mesh }
-                }
-                if (needDecode) {
-                    Vector2(1.0, 0.0)
-                } else {
-                    Vector2.Zero
-                }
             }
         }
-        continuation.baseMergeInfo = PaintingfaceMergeInfo(baseRect)
-        val paste = ((face.mAnchorMax - face.mAnchorMin) * baseRect.size * face.mPivot +
-            face.mAnchorMin * baseRect.size + face.mAnchoredPosition -
-            face.size * face.mPivot * face.mLocalScale.vector2).round() + correction
-        continuation.faceMergeInfo = PaintingfaceMergeInfo(face, face.mLocalScale.vector2, paste)
+        with(continuation) {
+            manager = status.manager
+            baseMergeInfo = PaintingfaceMergeInfo(status.result.transforms[0], "")
+            faceTransform = status.result.transforms[1]
+            width = status.result.width
+            height = status.result.height
+        }
         activeImport()
+        return true
     }
 
     override fun activeImport() {
@@ -118,7 +95,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         }
     }
 
-    override fun importPainting() {
+    override fun importPainting(): File? {
         val wc = configurations.painting.wildcards.replace("{name}", continuation.taskName)
         val files = chooseFile("导入立绘",
             arrayOf(
@@ -127,18 +104,26 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             ),
             File(configurations.painting.importPaintingPath).withDefaultPath()
         )
-        if (files.isEmpty()) return
+        if (files.isEmpty()) return null
         val imageFile = files[0]
         configurations.painting.importPaintingPath = imageFile.parent
-        val image = ImageIO.read(imageFile)
-        val painting = with(continuation.baseMergeInfo.rect) {
-            BufferedImage(
-                maxOf(size.x.toInt(), image.width),
-                maxOf(size.y.toInt(), image.height),
-                BufferedImage.TYPE_4BYTE_ABGR
-            ).paste(image.flipY(), 0, 0)
+        return imageFile
+    }
+
+    fun processPainting(importFile: File) {
+        val image = ImageIO.read(importFile).flipY()
+        with(continuation) {
+            baseMergeInfo.image = if (width > image.width || height > image.height) {
+                BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR) {
+                    drawImage(
+                        image,
+                        baseMergeInfo.transform.pastePoint.x.toInt(),
+                        baseMergeInfo.transform.pastePoint.y.toInt(),
+                        null
+                    )
+                }
+            } else image
         }
-        continuation.baseMergeInfo.image = painting
         mergePainting()
         with(gui) {
             importFromImageButton.isDisable = false
@@ -147,46 +132,46 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         }
     }
 
-    fun importFaceFromFile() {
+    fun importFaceFromFile(): File? {
         val fileName = continuation.taskName
             .split('_', limit = 3)
-            .slice(0..1)
+            .let { it.slice(0..it.lastIndex.coerceAtMost(1)) }
             .joinToString("_")
+            .replace("_n", "")
         val wcf = configurations.paintingface.fileWildcards.replace("{name}", fileName)
         val wct = configurations.paintingface.fileWildcards.replace("{name}", continuation.taskName)
-        val files = chooseFile("导入差分表情文件",
+        val files = chooseFile(
+            "导入差分表情文件",
             arrayOf(
                 FileChooser.ExtensionFilter("Required Files ($wcf)", wcf),
                 FileChooser.ExtensionFilter("Required Files ($wct)", wct),
-                FileChooser.ExtensionFilter("All Paintings (*.png)", "*.png")
+                FileChooser.ExtensionFilter("All Files (*.*)", "*.*")
             ),
             File(configurations.paintingface.importFaceFilePath).withDefaultPath()
         )
-        if (files.isEmpty()) return
-        with(gui) {
-            requiredImageNameList.clear()
-        }
-        continuation.childrenMergeInfoList.clear()
+        if (files.isEmpty()) return null
         val faceFile = files[0]
         configurations.paintingface.importFaceFilePath = faceFile.parent
+        return faceFile
+    }
+
+    fun processFaceFile(importFile: File) {
+        runBlockingFX(gui) {
+            requiredImageMergeInfoList.clear()
+        }
         val faceContext = try {
-            manager.loadFile(faceFile.absolutePath)
+            continuation.manager.loadFile(importFile.absolutePath)
         } catch (e: Exception) {
             return gui.reportFaceBundleError("导入差分表情文件时出错")
         }
         if (faceContext.objects.isEmpty()) return gui.reportFaceBundleError()
-        val sprites = faceContext.objectList.filterIsInstance<Sprite>().toMutableList()
+        val sprites = faceContext.objectList.filterIsInstance<Sprite>()
         if (sprites.isEmpty()) return gui.reportFaceBundleError()
-        if (!sprites.all { sprite -> sprite.mName.all { it.isDigit() } }) {
-            return gui.reportFaceBundleError()
-        }
-        sprites.sortBy { it.mName.toInt() }
         for (sprite in sprites) {
-            continuation.childrenMergeInfoList.add(
-                continuation.faceMergeInfo.emptyCopy().apply {
-                    name = sprite.mName
-                    val tex = sprite.mRD.texture.getObj()!!
-                    image = if (
+            val mergeInfo = continuation.createMergeInfo(continuation.faceTransform, sprite.mName).apply {
+                val tex = sprite.mRD.texture.getObj()!!
+                image = scalePaintingface(
+                    if (
                         tex.mWidth == sprite.mRect.w.toInt() &&
                         tex.mHeight == sprite.mRect.h.toInt()
                     ) {
@@ -198,22 +183,20 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
                             sprite.mRect.w.toInt(),
                             sprite.mRect.h.toInt()
                         )
-                    }.resize(
-                        (sprite.mRect.w * scale.x).roundToInt(),
-                        (sprite.mRect.h * scale.y).roundToInt()
-                    )
-                }
-            )
+                    }, continuation.faceTransform
+                )
+            }
+            runBlockingFX(gui) {
+                requiredImageMergeInfoList.add(mergeInfo)
+            }
         }
-        with(gui) {
-            requiredImageNameList.addAll(continuation.childrenMergeInfoList.map { it.name })
-            requiredImageListView.selectionModel.select(0)
-        }
+        gui.requiredImageListView.selectionModel.select(0)
         mergePainting()
     }
 
-    fun importFaceFromImage() {
-        val files = chooseFile("导入差分表情图片",
+    fun importFaceFromImage(): File? {
+        val files = chooseFile(
+            "导入差分表情图片",
             arrayOf(
                 FileChooser.ExtensionFilter(
                     "Required Files(${configurations.paintingface.imageWildcards})"
@@ -227,98 +210,118 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             ),
             File(configurations.paintingface.importFace2DPath).withDefaultPath()
         )
-        if (files.isEmpty()) return
+        if (files.isEmpty()) return null
         val imageFile = files[0]
         configurations.paintingface.importFace2DPath = imageFile.parent
-        val mergeInfo = continuation.faceMergeInfo.emptyCopy()
-        val image = ImageIO.read(imageFile).let {
-            it.flipY().resize(
-                (it.width * mergeInfo.scale.x).roundToInt(),
-                (it.height * mergeInfo.scale.y).roundToInt()
+        return imageFile
+    }
+
+    fun processFaceImage(importFile: File) {
+        val mergeInfo = continuation.createMergeInfo(
+            continuation.faceTransform,
+            importFile.nameWithoutExtension
+        ).apply {
+            image = scalePaintingface(
+                ImageIO.read(importFile).flipY(),
+                continuation.faceTransform
             )
         }
-        continuation.childrenMergeInfoList.clear()
-        continuation.childrenMergeInfoList.add(
-            mergeInfo.apply {
-                name = imageFile.nameWithoutExtension
-                this.image = image
-            }
-        )
-        with(gui) {
-            requiredImageNameList.clear()
-            requiredImageNameList.addAll(continuation.childrenMergeInfoList.map { it.name })
+        runBlockingFX(gui) {
+            requiredImageMergeInfoList.clear()
+            requiredImageMergeInfoList.add(mergeInfo)
             requiredImageListView.selectionModel.select(0)
         }
         mergePainting()
     }
 
     override fun mergePainting() {
-        if (continuation.childrenMergeInfoList.isEmpty()) {
+        if (gui.requiredImageMergeInfoList.isEmpty()) {
             gui.previewMainImageView.image = continuation.baseMergeInfo.image.flipY().createPreview()
             return
         }
-        val px = continuation.faceMergeInfo.pastePoint.x.toInt() + gui.spinnerX.value
-        val py = continuation.faceMergeInfo.pastePoint.y.toInt() + gui.spinnerY.value
-        for (face in continuation.childrenMergeInfoList) {
-            face.mergePainting = {
-                continuation.baseMergeInfo.image.copy().paste(face.image, px, py)
-            }
-            face.generateGlobalExhibit = { face.mergedPainting.flipY().createPreview() }
-            face.generateLocalExhibit = {
-                face.mergedPainting.getSubimage(
-                    (px - 32).coerceAtLeast(0),
-                    (py - 32).coerceAtLeast(0),
-                    (face.image.width + 64).coerceAtMost(face.mergedPainting.width - px),
-                    (face.image.height + 64).coerceAtMost(face.mergedPainting.height - py)
-                ).flipY().createPreview()
-            }
+        with(continuation) {
+            pasteX = faceTransform.pastePoint.x.toInt() + gui.spinnerX.value
+            pasteY = faceTransform.pastePoint.y.toInt() + gui.spinnerY.value
+        }
+        for (face in gui.requiredImageMergeInfoList) {
+            face.changedFlag.fill(true)
         }
         with(gui.spinnerX) {
             with(valueFactory as IntegerSpinnerValueFactory) {
-                min = (
-                        -continuation.faceMergeInfo.pastePoint.x -
-                        continuation.childrenMergeInfoList[0].image.width
-                    ).toInt()
-                max = continuation.baseMergeInfo.image.width - continuation.faceMergeInfo.pastePoint.x.toInt()
+                min = (-continuation.faceTransform.pastePoint.x -
+                        gui.requiredImageMergeInfoList[0].image.width).toInt()
+                max = continuation.baseMergeInfo.image.width -
+                        continuation.faceTransform.pastePoint.x.toInt()
             }
             isDisable = false
         }
         with(gui.spinnerY) {
             with(valueFactory as IntegerSpinnerValueFactory) {
-                min = (
-                        -continuation.faceMergeInfo.pastePoint.y -
-                        continuation.childrenMergeInfoList[0].image.height
-                    ).toInt()
-                max = continuation.baseMergeInfo.image.height - continuation.faceMergeInfo.pastePoint.y.toInt()
+                min = (-continuation.faceTransform.pastePoint.y -
+                        gui.requiredImageMergeInfoList[0].image.height).toInt()
+                max = continuation.baseMergeInfo.image.height -
+                        continuation.faceTransform.pastePoint.y.toInt()
             }
             isDisable = false
         }
         with(gui) {
-            val selected = requiredImageListView.selectionModel.selectedItem
-            previewMainImageView.image = continuation.childrenMergeInfoList[selected].globalExhibit
-            localPreviewImageView.image = continuation.childrenMergeInfoList[selected].localExhibit
+            val mergeInfo = gui.requiredImageListView.selectionModel.selectedItem
+            previewMainImageView.image = mergeInfo.getGlobalExhibit()
+            localPreviewImageView.image = mergeInfo.getLocalExhibit()
             previewTabPane.selectionModel.select(1)
             reMergeButton.isDisable = false
             saveButton.isDisable = false
+            saveAllButton.isDisable = false
             previewTabPane.isDisable = false
         }
     }
 
-    override fun saveMergedPainting() {
-        gui.importFileButton.isDisable = true
-        gui.importImageButtonZone.isDisable = true
-        gui.reMergeButton.isDisable = true
-        continuation.childrenMergeInfoList[gui.requiredImageListView.selectionModel.selectedItem].mergedPainting
-            .flipY().save(
-                File("${configurations.painting.importPaintingPath}/${continuation.taskName}_exp.png")
+    override fun saveMergedPainting() = with(gui) {
+        importFileButton.isDisable = true
+        importImageButtonZone.isDisable = true
+        reMergeButton.isDisable = true
+        requiredImageListView.selectionModel.selectedItem.getMergedPainting()
+            .flipY().savePng(
+                "${configurations.painting.importPaintingPath}/${continuation.taskName}_exp.png",
+                configurations.outputCompressionLevel
             )
-        gui.importFileButton.isDisable = false
-        gui.importImageButtonZone.isDisable = false
-        gui.reMergeButton.isDisable = false
+        importFileButton.isDisable = false
+        importImageButtonZone.isDisable = false
+        reMergeButton.isDisable = false
     }
 
-    private fun PaintingfacePanel.reportFaceBundleError(msg: String = "差分表情文件不可用") {
-        paintingfaceFileErrorLabel.textFill = errorTextFill
-        paintingfaceFileErrorString.value = msg
+    fun saveAllMergedPainting() {
+        with(gui) {
+            importFileButton.isDisable = true
+            importImageButtonZone.isDisable = true
+            reMergeButton.isDisable = true
+            requiredImageListView.isDisable = true
+        }
+        val size = gui.requiredImageMergeInfoList.size
+        for ((i, mergeInfo) in gui.requiredImageMergeInfoList.withIndex()) {
+            runBlockingFX(gui) { saveAllButton.text = "保存所有 ($i/$size)" }
+            var fileName = configurations.painting.importPaintingPath +
+                    "/${continuation.taskName}_exp_${mergeInfo.name}"
+            if (Files.exists(Path.of("${fileName}.png"))) {
+                fileName = generateFileName(fileName)
+            }
+            mergeInfo.getMergedPainting().flipY().savePng(
+                "${fileName}.png",
+                configurations.outputCompressionLevel
+            )
+        }
+        runBlockingFX(gui) {
+            importFileButton.isDisable = false
+            importImageButtonZone.isDisable = false
+            reMergeButton.isDisable = false
+            requiredImageListView.isDisable = false
+            saveAllButton.text = "保存所有"
+        }
+    }
+
+    fun close() {
+        if (::continuation.isInitialized) {
+            continuation.close()
+        }
     }
 }
