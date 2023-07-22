@@ -164,12 +164,12 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         } catch (e: Exception) {
             return gui.reportFaceBundleError("导入差分表情文件时出错")
         }
-        if (faceContext.objects.isEmpty()) return gui.reportFaceBundleError()
+        if (faceContext.objectList.isEmpty()) return gui.reportFaceBundleError()
         val sprites = faceContext.objectList.filterIsInstance<Sprite>()
         if (sprites.isEmpty()) return gui.reportFaceBundleError()
         for (sprite in sprites) {
             val mergeInfo = continuation.createMergeInfo(continuation.faceTransform, sprite.mName).apply {
-                val tex = sprite.mRD.texture.getObj()!!
+                val tex = sprite.mRD.texture.getObj()
                 image = scalePaintingface(
                     if (
                         tex.mWidth == sprite.mRect.w.toInt() &&
