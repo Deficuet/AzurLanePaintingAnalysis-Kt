@@ -1,6 +1,5 @@
 package io.github.deficuet.alpa.utils
 
-import io.github.deficuet.alpa.gui.PanelTemplate
 import io.github.deficuet.jimage.fancyBufferedImage
 import javafx.application.Platform
 import javafx.event.EventTarget
@@ -13,6 +12,7 @@ import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
 import javafx.stage.FileChooser.ExtensionFilter
 import net.mamoe.yamlkt.Yaml
+import tornadofx.View
 import java.awt.*
 import java.awt.image.BufferedImage
 import java.io.File
@@ -51,24 +51,7 @@ val allTypeFilter = arrayOf(
     ExtensionFilter("All types", "*.*")
 )
 
-val defaultConfigurations by lazy {
-    Configurations(
-        painting = Configurations.PaintingSetting(
-            importFilesPath = "C:/Users",
-            importPaintingPath = "C:/Users",
-            wildcards = "*{name}.png;*{name}_group.png;*{name}_exp.png",
-            autoImport = false,
-        ),
-        paintingface = Configurations.PaintingfaceSetting(
-            importFilesPath = "C:/Users",
-            importFace2DPath = "C:/Users",
-            importFaceFilePath = "C:/Users",
-            imageWildcards = "?.png;{name}_head.png",
-            fileWildcards = "{name}",
-        ),
-        outputCompressionLevel = 7
-    )
-}
+val defaultConfigurations by lazy { Configurations() }
 
 val configFile = File("alpa.yml")
 
@@ -128,7 +111,7 @@ fun EventTarget.isValidRowModified(): Boolean {
     }
 }
 
-fun <P: PanelTemplate<*>, T> runBlockingFX(gui: P, task: P.() -> T): T? {
+fun <P: View, T> runBlockingFX(gui: P, task: P.() -> T): T? {
     return try {
         if (Platform.isFxApplicationThread()) {
             gui.task()

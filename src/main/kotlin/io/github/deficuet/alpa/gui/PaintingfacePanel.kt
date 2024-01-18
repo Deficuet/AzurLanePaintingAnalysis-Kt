@@ -6,6 +6,7 @@ import io.github.deficuet.alpa.utils.errorTextFill
 import io.github.deficuet.alpa.utils.initialPreview
 import io.github.deficuet.alpa.utils.onUserSelectModified
 import javafx.beans.property.SimpleStringProperty
+import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.Button
 import javafx.scene.control.Label
@@ -31,8 +32,7 @@ class PaintingfacePanel: PanelTemplate<PaintingfaceTaskContinuation.Paintingface
         with(importFileZone) {
             vbox {
                 vboxConstraints {
-                    marginTop = 16.0; marginLeft = 8.0
-                    marginRight = 8.0; marginBottom = 8.0
+                    margin = Insets(16.0, 8.0, 8.0, 8.0)
                     minWidth = 358.0; minHeight = 149.0
                 }
                 hbox {

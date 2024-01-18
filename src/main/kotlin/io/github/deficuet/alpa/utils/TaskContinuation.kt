@@ -53,7 +53,7 @@ class PaintingfaceTaskContinuation(importFile: File): TaskContinuation(importFil
         transform: TextureTransform,
         name: String
     ): MergeInfo(transform, name) {
-        val changedFlag = BooleanArray(3) { true }
+        var changedFlag = 0b111
 
         private lateinit var mergedPainting: BufferedImage
         private lateinit var globalExhibit: ImageFX
@@ -61,33 +61,33 @@ class PaintingfaceTaskContinuation(importFile: File): TaskContinuation(importFil
 
         @Synchronized
         fun getMergedPainting(): BufferedImage {
-            if (changedFlag[0]) {
+            if (changedFlag.and(0b001) == 1) {
                 mergedPainting = baseMergeInfo.image.copy().paste(image, pasteX, pasteY)
-                changedFlag[0] = false
+                changedFlag = changedFlag.and(0b110)
             }
             return mergedPainting
         }
 
         @Synchronized
         fun getGlobalExhibit(): ImageFX {
-            if (changedFlag[1]) {
-                globalExhibit = getMergedPainting().flipY().createPreview()
-                changedFlag[1] = false
+            if (changedFlag.and(0b010) == 0b010) {
+                globalExhibit = getMergedPainting().flipY().apply().createPreview()
+                changedFlag = changedFlag.and(0b101)
             }
             return globalExhibit
         }
 
         @Synchronized
         fun getLocalExhibit(): ImageFX {
-            if (changedFlag[2]) {
+            if (changedFlag.and(0b100) == 0b100) {
                 val p = getMergedPainting()
                 localExhibit = p.getSubimage(
                     (pasteX - 32).coerceAtLeast(0),
                     (pasteY - 32).coerceAtLeast(0),
                     (image.width + 64).coerceAtMost(p.width - pasteX),
                     (image.height + 64).coerceAtMost(p.height - pasteY)
-                ).flipY().createPreview()
-                changedFlag[2] = false
+                ).flipY().apply(true).createPreview()
+                changedFlag = changedFlag.and(0b011)
             }
             return localExhibit
         }

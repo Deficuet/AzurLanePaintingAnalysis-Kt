@@ -4,9 +4,14 @@ import io.github.deficuet.alp.painting.AnalyzeStatusDep
 import io.github.deficuet.alp.painting.PaintingAnalyzeStatus
 import io.github.deficuet.alp.painting.analyzePainting
 import io.github.deficuet.alp.painting.decoratePainting
+import io.github.deficuet.alpa.gui.MainPanel
 import io.github.deficuet.alpa.gui.PaintingPanel
 import io.github.deficuet.alpa.utils.*
-import io.github.deficuet.jimage.*
+import io.github.deficuet.jimage.BufferedImage
+import io.github.deficuet.jimage.copy
+import io.github.deficuet.jimage.flipY
+import io.github.deficuet.jimage.paste
+import io.github.deficuet.jimageio.savePng
 import javafx.geometry.Pos
 import javafx.scene.control.Tab
 import javafx.scene.paint.Color
@@ -15,6 +20,7 @@ import tornadofx.*
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import kotlin.io.path.Path
 import kotlin.math.roundToInt
 
 class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
@@ -49,7 +55,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
             }
             previewMainImageView.image = initialPreview
         }
-        val status = analyzePainting(importFile.toPath())
+        val status = analyzePainting(importFile.toPath(), Path(configurations.assetSystemRoot!!))
         if (status is AnalyzeStatusDep) {
             runBlockingFX(gui) {
                 dependenciesList.addAll(status.dependencies.keys)
@@ -72,24 +78,25 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         with(continuation) {
             width = status.result.width
             height = status.result.height
-            for (tr in status.result.transforms) {
-                runBlockingFX(gui) {
+            runBlockingFX(gui) {
+                for (tr in status.result.transforms) {
                     requiredImageMergeInfoList.add(PaintingMergeInfo(tr, tr.fileName))
                 }
             }
         }
         status.manager.close()
-        activeImport()
+        enableImport()
         return true
     }
 
-    override fun activeImport() {
+    override fun enableImport() {
         runBlockingFX(gui) {
             importImageTitledPane.isDisable = configurations.painting.autoImport
             with(requiredImageListView.selectionModel) {
                 select(0)
                 requiredPaintingName.value = "目标名称：${selectedItem.name}"
             }
+            MainPanel.Externals.importPaintingRootButton.isDisable = configurations.painting.autoImport
         }
     }
 
@@ -100,8 +107,8 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                 runBlockingFX(gui) { showDebugInfo("自动导入：${mergeInfo.name}") }
                 val file = configurations.painting.wildcards.replace("{name}", mergeInfo.name)
                     .split(";").map {
-                        File("${configurations.painting.importPaintingPath}/${it.trim('*')}")
-                    }.firstOrNull { it.exists() }
+                        "${configurations.painting.importPaintingPath}/${it.trim('*')}"
+                    }.firstNotNullOfOrNull { val f = File(it); if (f.exists()) f else null }
                 if (file == null) {
                     runBlockingFX(gui) { reportBundleError("自动导入中断：找不到 ${mergeInfo.name}") }
                     failed = true
@@ -115,6 +122,7 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
             runBlockingFX(gui) {
                 if (!failed) errorString.value = ""
                 importImageTitledPane.isDisable = false
+                MainPanel.Externals.importPaintingRootButton.isDisable = false
             }
         }
     }
@@ -134,12 +142,13 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         gui.errorString.value = ""
         val f = files[0]
         configurations.painting.importPaintingPath = f.parent
+        MainPanel.Externals.paintingRootLabel.text = configurations.painting.importPaintingPath
         return f
     }
 
     fun processPainting(imageFile: File, index: Int, mergeInfo: PaintingMergeInfo) {
         val image = ImageIO.read(imageFile)
-        val painting = decoratePainting(image.flipY(), mergeInfo.transform)
+        val painting = decoratePainting(image.flipY().apply(), mergeInfo.transform)
         with(mergeInfo) {
             exhibit = image.createPreview(height = 478)
             this.image = with(continuation) {
@@ -254,8 +263,8 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
     override fun saveMergedPainting() {
         gui.importFileButton.isDisable = true
         gui.importImageButtonZone.isDisable = true
-        continuation.mergedPainting.flipY().savePng(
-            "${configurations.painting.importPaintingPath}/${continuation.taskName}_group.png",
+        continuation.mergedPainting.flipY().apply().savePng(
+            File("${configurations.painting.importPaintingPath}/${continuation.taskName}_group.png"),
             configurations.outputCompressionLevel
         )
         gui.importFileButton.isDisable = false
@@ -275,6 +284,6 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
                 )
             }
         }
-        gui.previewMainImageView.image = continuation.mergedPainting.flipY().createPreview()
+        gui.previewMainImageView.image = continuation.mergedPainting.flipY().apply().createPreview()
     }
 }

@@ -7,8 +7,9 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
+def progVersion = "0.0.1-beta.4"
 group 'io.github.deficuet'
-version '0.0.1-beta.3'
+version progVersion
 mainClassName = "io.github.deficuet.alpa.gui.MainApp"
 
 javafx {
@@ -29,11 +30,12 @@ repositories {
 dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-core"
     implementation 'no.tornado:tornadofx:1.7.20'
-    implementation 'com.github.Deficuet:UnityKt:v0.0.1-beta.3.1'
+    implementation 'com.github.Deficuet:UnityKt:0.1.0_alpha.10'
     implementation 'net.mamoe.yamlkt:yamlkt:0.12.0'
-    implementation 'org.json:json:20230227'
-    implementation 'com.github.Deficuet:JImageUtils:v0.0.2'
-    implementation 'com.github.Deficuet:AzurlanePaintingUtils:0.0.6.1'
+    implementation 'org.json:json:20231013'
+    implementation 'com.github.Deficuet:JImageUtils:0.0.4.1'
+    implementation 'com.github.Deficuet:AdvancedJImageIO:0.0.3'
+    implementation 'com.github.Deficuet:AzurlanePaintingUtils:0.1.0_1'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
 }
@@ -52,7 +54,7 @@ jar {
 shadowJar {
     archiveBaseName.set("ALPA")
     archiveClassifier.set("")
-    archiveVersion.set("0.0.1-beta.3")
+    archiveVersion.set(progVersion)
     zip64 = true
 }
 

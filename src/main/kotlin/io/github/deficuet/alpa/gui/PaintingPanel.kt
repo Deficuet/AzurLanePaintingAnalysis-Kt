@@ -5,6 +5,7 @@ import io.github.deficuet.alpa.utils.PaintingMergeInfo
 import io.github.deficuet.alpa.utils.onUserSelectModified
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
+import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.control.Button
 import javafx.scene.control.TableColumn
@@ -23,8 +24,7 @@ class PaintingPanel: PanelTemplate<PaintingMergeInfo>("立绘合并") {
         with(importFileZone) {
             tableview(dependenciesList) {
                 vboxConstraints {
-                    marginTop = 16.0; marginLeft = 8.0
-                    marginRight = 8.0; marginBottom = 8.0
+                    margin = Insets(16.0, 8.0, 8.0, 8.0)
                     minWidth = 356.0; maxHeight = 150.0
                 }
                 selectionModel = null
@@ -42,6 +42,7 @@ class PaintingPanel: PanelTemplate<PaintingMergeInfo>("立绘合并") {
                 action {
                     isDisable = true
                     importFileButton.isDisable = true
+                    MainPanel.Externals.importPaintingRootButton.isDisable = true
                     val file = functions.importPainting()
                     if (file != null) {
                         runAsync {
@@ -54,12 +55,14 @@ class PaintingPanel: PanelTemplate<PaintingMergeInfo>("立绘合并") {
                             }
                             isDisable = false
                             importFileButton.isDisable = false
+                            MainPanel.Externals.importPaintingRootButton.isDisable = false
                             importImageTitledPane.isDisable = false
                             saveButtonZone.isDisable = false
                         }
                     } else {
                         isDisable = false
                         importFileButton.isDisable = false
+                        MainPanel.Externals.importPaintingRootButton.isDisable = false
                     }
                 }
             }

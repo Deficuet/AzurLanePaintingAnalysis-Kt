@@ -3,13 +3,14 @@ package io.github.deficuet.alpa.function
 import io.github.deficuet.alp.paintingface.PaintingfaceAnalyzeStatus
 import io.github.deficuet.alp.paintingface.analyzePaintingface
 import io.github.deficuet.alp.paintingface.scalePaintingface
+import io.github.deficuet.alpa.gui.MainPanel
 import io.github.deficuet.alpa.gui.PaintingfacePanel
 import io.github.deficuet.alpa.utils.*
 import io.github.deficuet.jimage.BufferedImage
 import io.github.deficuet.jimage.flipY
-import io.github.deficuet.jimage.savePng
-import io.github.deficuet.unitykt.data.Sprite
-import io.github.deficuet.unitykt.getObj
+import io.github.deficuet.jimageio.savePng
+import io.github.deficuet.unitykt.classes.Sprite
+import io.github.deficuet.unitykt.classes.SpriteCropStrategy
 import javafx.scene.control.SpinnerValueFactory.IntegerSpinnerValueFactory
 import javafx.scene.paint.Color
 import javafx.stage.FileChooser
@@ -19,6 +20,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.imageio.ImageIO
+import kotlin.io.path.Path
 
 class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunctions() {
     private lateinit var continuation: PaintingfaceTaskContinuation
@@ -61,7 +63,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             saveAllButton.isDisable = true
             paintingfaceFileErrorString.value = ""
         }
-        val status = analyzePaintingface(importFile.toPath())
+        val status = analyzePaintingface(importFile.toPath(), Path(configurations.assetSystemRoot!!))
         if (!status.succeed) {
             runBlockingFX(gui) {
                 reportBundleError(status.message)
@@ -85,11 +87,11 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             width = status.result.width
             height = status.result.height
         }
-        activeImport()
+        enableImport()
         return true
     }
 
-    override fun activeImport() {
+    override fun enableImport() {
         with(gui) {
             importImageTitledPane.isDisable = false
         }
@@ -107,11 +109,12 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         if (files.isEmpty()) return null
         val imageFile = files[0]
         configurations.painting.importPaintingPath = imageFile.parent
+        MainPanel.Externals.paintingRootLabel.text = configurations.painting.importPaintingPath
         return imageFile
     }
 
     fun processPainting(importFile: File) {
-        val image = ImageIO.read(importFile).flipY()
+        val image = ImageIO.read(importFile).flipY().apply(true)
         with(continuation) {
             baseMergeInfo.image = if (width > image.width || height > image.height) {
                 BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR) {
@@ -169,22 +172,8 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         if (sprites.isEmpty()) return gui.reportFaceBundleError()
         for (sprite in sprites) {
             val mergeInfo = continuation.createMergeInfo(continuation.faceTransform, sprite.mName).apply {
-                val tex = sprite.mRD.texture.getObj()
-                image = scalePaintingface(
-                    if (
-                        tex.mWidth == sprite.mRect.w.toInt() &&
-                        tex.mHeight == sprite.mRect.h.toInt()
-                    ) {
-                        tex.image
-                    } else {
-                        tex.image.getSubimage(
-                            sprite.mRD.textureRect.x.toInt(),
-                            sprite.mRD.textureRect.y.toInt(),
-                            sprite.mRect.w.toInt(),
-                            sprite.mRect.h.toInt()
-                        )
-                    }, continuation.faceTransform
-                )
+                val spriteImage = sprite.getImage(SpriteCropStrategy.USE_RECT) ?: return gui.reportFaceBundleError()
+                image = scalePaintingface(spriteImage, continuation.faceTransform)
             }
             runBlockingFX(gui) {
                 requiredImageMergeInfoList.add(mergeInfo)
@@ -222,7 +211,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             importFile.nameWithoutExtension
         ).apply {
             image = scalePaintingface(
-                ImageIO.read(importFile).flipY(),
+                ImageIO.read(importFile).flipY().apply(true),
                 continuation.faceTransform
             )
         }
@@ -236,7 +225,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
 
     override fun mergePainting() {
         if (gui.requiredImageMergeInfoList.isEmpty()) {
-            gui.previewMainImageView.image = continuation.baseMergeInfo.image.flipY().createPreview()
+            gui.previewMainImageView.image = continuation.baseMergeInfo.image.flipY().apply().createPreview()
             return
         }
         with(continuation) {
@@ -244,7 +233,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             pasteY = faceTransform.pastePoint.y.toInt() + gui.spinnerY.value
         }
         for (face in gui.requiredImageMergeInfoList) {
-            face.changedFlag.fill(true)
+            face.changedFlag = 0b111
         }
         with(gui.spinnerX) {
             with(valueFactory as IntegerSpinnerValueFactory) {
@@ -281,8 +270,8 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         importImageButtonZone.isDisable = true
         reMergeButton.isDisable = true
         requiredImageListView.selectionModel.selectedItem.getMergedPainting()
-            .flipY().savePng(
-                "${configurations.painting.importPaintingPath}/${continuation.taskName}_exp.png",
+            .flipY().apply().savePng(
+                File("${configurations.painting.importPaintingPath}/${continuation.taskName}_exp.png"),
                 configurations.outputCompressionLevel
             )
         importFileButton.isDisable = false
@@ -296,6 +285,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             importImageButtonZone.isDisable = true
             reMergeButton.isDisable = true
             requiredImageListView.isDisable = true
+            MainPanel.Externals.compressionLevelSpinner.isDisable = true
         }
         val size = gui.requiredImageMergeInfoList.size
         for ((i, mergeInfo) in gui.requiredImageMergeInfoList.withIndex()) {
@@ -305,8 +295,8 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             if (Files.exists(Path.of("${fileName}.png"))) {
                 fileName = generateFileName(fileName)
             }
-            mergeInfo.getMergedPainting().flipY().savePng(
-                "${fileName}.png",
+            mergeInfo.getMergedPainting().flipY().apply().savePng(
+                File("${fileName}.png"),
                 configurations.outputCompressionLevel
             )
         }
@@ -315,6 +305,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             importImageButtonZone.isDisable = false
             reMergeButton.isDisable = false
             requiredImageListView.isDisable = false
+            MainPanel.Externals.compressionLevelSpinner.isDisable = false
             saveAllButton.text = "保存所有"
         }
     }

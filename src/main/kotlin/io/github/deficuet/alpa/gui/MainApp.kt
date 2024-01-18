@@ -3,6 +3,8 @@ package io.github.deficuet.alpa.gui
 import io.github.deficuet.alpa.function.BackendFunctions
 import io.github.deficuet.alpa.utils.*
 import javafx.beans.property.SimpleStringProperty
+import javafx.geometry.Insets
+import javafx.geometry.Orientation
 import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.image.ImageView
@@ -39,21 +41,32 @@ class MainApp: App(MainPanel::class, PaintingfacePanel.ImportButtonStyle::class)
 }
 
 class MainPanel: View("ALPA") {
+    object Externals {
+        var compressionLevelSpinner: Spinner<Int> by singleAssign()
+        var paintingRootLabel: TextField by singleAssign()
+        var importPaintingRootButton: Button by singleAssign()
+    }
+
+    private var operationPanel: TabPane by singleAssign()
+    private var assetSystemRootLabel: TextField by singleAssign()
+
     override val root = vbox {
-        titledpane("全局设置", collapsible = false) {
+        titledpane("设置", collapsible = false) {
             vboxConstraints {
                 marginTop = 16.0; marginLeft = 16.0; marginRight = 16.0
             }
             hbox {
                 alignment = Pos.CENTER_LEFT
-                label("保存图片压缩等级：")
-                spinner(
+                label("保存图片压缩等级 (0-9)：")
+                Externals.compressionLevelSpinner = spinner(
                     min = 0, max = 9, initialValue = configurations.outputCompressionLevel,
                     editable = true
                 ) {
+                    maxWidth = 100.0; minHeight = 24.0
                     tooltip(
-                        "一般设置为7，8和9在只能进一步减少一点点体积的同时要花费数倍的时间。" +
-                                "不在意占用空间的话可以调低使保存更快"
+                        "0为无压缩，设置为1即有显著压缩效果，" +
+                        "一般设置为5~7，8和9在只能进一步减少一点点体积的同时要花费数倍的时间。" +
+                        "不在意占用空间的话可以调低使保存更快"
                     )
                     valueProperty().addListener(
                         ChangeListener { _, _, new ->
@@ -61,19 +74,65 @@ class MainPanel: View("ALPA") {
                         }
                     )
                 }
+                separator(Orientation.VERTICAL) {
+                    hboxConstraints {
+                        margin = Insets(0.0, 4.0, 0.0, 8.0)
+                    }
+                }
+                label("立绘根目录：")
+                Externals.paintingRootLabel = textfield(configurations.painting.importPaintingPath) {
+                    maxWidth = 150.0; minHeight = 24.0
+                    isEditable = false
+                }
+                Externals.importPaintingRootButton = button("浏览...") {
+                    hboxConstraints { marginLeft = 8.0 }
+                    minWidth = 64.0; minHeight = 24.0
+                    action {
+                        isDisable = true
+                        val folder = BackendFunctions.importPaintingRoot()
+                        if (folder != null) {
+                            Externals.paintingRootLabel.text = configurations.painting.importPaintingPath
+                        }
+                        isDisable = false
+                    }
+                }
                 checkbox("自动寻找立绘") {
                     isSelected = configurations.painting.autoImport
-                    hboxConstraints { marginLeft = 30.0 }
+                    hboxConstraints { marginLeft = 8.0 }
                     selectedProperty().addListener(
                         ChangeListener { _, _, new ->
                             configurations.painting.autoImport = new
                         }
                     )
                 }
+                separator(Orientation.VERTICAL) {
+                    hboxConstraints {
+                        margin = Insets(0.0, 4.0, 0.0, 8.0)
+                    }
+                }
+                label("素材文件根目录：")
+                assetSystemRootLabel = textfield(configurations.assetSystemRoot ?: "无") {
+                    maxWidth = 150.0; minHeight = 24.0
+                    isEditable = false
+                }
+                button("浏览...") {
+                    hboxConstraints { marginLeft = 8.0 }
+                    minWidth = 64.0; minHeight = 24.0
+                    action {
+                        isDisable = true
+                        val folder = BackendFunctions.importAssetSystemRoot()
+                        if (folder != null) {
+                            operationPanel.isDisable = false
+                            assetSystemRootLabel.text = configurations.assetSystemRoot
+                        }
+                        isDisable = false
+                    }
+                }
             }
         }
-        tabpane {
+        operationPanel = tabpane {
             vboxConstraints { marginTop = 16.0 }
+            isDisable = configurations.assetSystemRoot == null
             tabMinWidth = 60.0
             tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
             tab<PaintingPanel>()
@@ -184,8 +243,7 @@ abstract class PanelTemplate<M: MergeInfo>(name: String): View(name) {
                         }
                     }
                 }
-                openFolderButton = button("打开文件夹") {
-                    tooltip("打开导出文件夹")
+                openFolderButton = button("打开保存文件夹") {
                     minHeight = 30.0
                     hboxConstraints { marginLeft = 16.0 }
                     action {
@@ -203,8 +261,7 @@ abstract class PanelTemplate<M: MergeInfo>(name: String): View(name) {
                 )
             }
             hboxConstraints {
-                marginLeft = 16.0; marginRight = 16.0
-                marginTop = 16.0; marginBottom = 16.0
+                margin = Insets(16.0)
             }
             tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
             tab("总体预览") {
