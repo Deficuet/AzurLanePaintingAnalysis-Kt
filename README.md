@@ -131,6 +131,7 @@
 
 ## 成品预览
 放个埃吉尔
-![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/0983157c-8f4f-4d59-bc60-d57c63fd8cb4)
+
+![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/0c4c354e-b0ec-43a6-9d8f-d708d3deb0f2)
 
 其他立绘人像和背景缩放比例不一样还能理解，这人像本身切得稀碎不知道图个啥
