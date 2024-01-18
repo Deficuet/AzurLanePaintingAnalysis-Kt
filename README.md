@@ -11,39 +11,39 @@
 ### 目录
 
 - [启动方法](#启动方法)
-- [改动及新增](#改动及新增)
+- [食用方法](#食用方法)
+  - [立绘合并](#立绘合并)
+  - [差分接头](#差分接头)
+- [重构改动及新增](#改动及新增)
   - [控制保存图片时的压缩等级](#控制保存图片时的压缩等级)
   - [坐标微调](#坐标微调)
   - [差分接头的局部预览](#差分接头的局部预览)
   - [一键导出所有差分表情立绘](#一键导出所有差分表情立绘)  ([#2](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/issues/2))
-- [食用方法](#食用方法)
-  - [立绘合并](#立绘合并)
-  - [差分接头](#差分接头)
 
 ### 立绘合并
-![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/3b934f96-d8e0-411b-8523-3d33c1acd836)
+![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/4ae3fca1-a0d6-4a47-baeb-8277972e4208)
 
 ### 差分表情接头
-![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/bfd3410d-7198-457f-b728-f1d8cf33254c)
+![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/981e47cb-2774-4e9a-a794-ba1b80df6cd7)
 
 基本布局和用法与[AzurLanePaintingAnalyzer](https://github.com/Deficuet/AzurLanePaintingAnalyzer)相同
 
 ## 启动方法
 下载最新的[Release](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/releases)后，解压所有文件运行bat即可
 
-<b>启动需要openjdk-11环境</b>，编写时使用的是openjdk-11.0.17+8
+<b>启动需要openjdk-11环境</b>，开发使用的是openjdk-11.0.21+9
 
 自带一套JavaFX SDK 11.0.2，从官网[JavaFX SDK](https://gluonhq.com/products/javafx/)直接下载获取，bat里已经配置好可以直接用
 
 也可以编辑bat文件自定义启动
 
-启动之后自动生成一个配置文件，一般不需要修改，使用时会自动更新保存
+启动之后自动生成一个配置文件，一般不需要手动修改，使用时会自动更新保存
 
 ## 改动及新增
 - ### 控制保存图片时的压缩等级
 ![image](https://user-images.githubusercontent.com/36525579/163660015-59cb2b4c-4055-4e13-aa92-2021dc260ac1.png)
 
-对PNG图片的无损压缩。一般用7级就行。不在意占用空间的话也可以调低，最低至0以获取更快的保存速度。最高9级
+对PNG图片的无损压缩。一般用5~7级就行。不在意占用空间的话也可以调低，最低至0以获取更快的保存速度。最高9级
 
 <b>不推荐使用8级乃至9级。</b>只比7级小一点点的同时要花费数倍的时间
 
@@ -78,7 +78,22 @@
 
 ## 食用方法
 
-之前用过py写的[AzurLanePaintingAnalyzer](https://github.com/Deficuet/AzurLanePaintingAnalyzer)可以选择略过
+### 使用之前
+
+![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/d3a6b5f8-9a56-43ad-9725-b81e9212e62c)
+
+第一次使用几乎所有交互都被禁用了，必须先设置`素材文件根目录`，即包含有例如`painting`，`paintingface`，`char`等文件夹的目录。
+
+例如在Android文件系统里碧蓝航线的文件结构是
+```
+/sdcard/Android/data/com.bilibili.azurlane/files/AssetBundles
+  - char
+  - ...
+  - painting
+  - paintingface
+  - ...
+```
+那么素材文件根目录就是`/sdcard/Android/data/com.bilibili.azurlane/files/AssetBundles`
 
 ### 立绘合并
 ![image](https://user-images.githubusercontent.com/36525579/163661419-df0c3f6d-65b4-4827-b1b2-7c646615ace7.png)
@@ -87,13 +102,7 @@
 
 ![image](https://user-images.githubusercontent.com/36525579/163661590-0e1f4415-749e-411e-81f7-5d7475c9ae0b.png)
 
-不需要合并或无法读取文件等情况都会报错。导入文件后会加载依赖项文件用来分析导入立绘时使用的筛选文件名，同一文件夹下找不到依赖项也会报错。
-
-使用的文件名是依赖项文件内的`Texture2D`对象的名字，而不是依赖项文件本身的文件名（以香槟婚纱的文件举例）
-![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/44078c2b-bf42-4d45-857a-031580e5413f)
-
-![image](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/assets/36525579/2e77a5d3-f7b0-4ed6-8739-d4ca1a583262)
-
+不需要合并或无法读取文件等情况都会中断分析过程并给出信息。导入文件后会通过`UnityKt PPtr`加载依赖项文件用来分析导入立绘时使用的筛选文件名，找不到依赖项也会显示错误信息。
 
 之后一个一个往里导入立绘的png图片即可。**不提供把立绘碎片拼在一起的功能。通配符设置可以在config.yml内修改，差分接头同理**
 
