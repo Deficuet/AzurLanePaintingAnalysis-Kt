@@ -1,5 +1,6 @@
 package io.github.deficuet.alpa.function
 
+import io.github.deficuet.alp.painting.decoratePainting
 import io.github.deficuet.alp.paintingface.PaintingfaceAnalyzeStatus
 import io.github.deficuet.alp.paintingface.analyzePaintingface
 import io.github.deficuet.alp.paintingface.scalePaintingface
@@ -81,11 +82,8 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             }
         }
         with(continuation) {
-            manager = status.manager
-            baseMergeInfo = PaintingfaceMergeInfo(status.result.transforms[0], "")
-            faceTransform = status.result.transforms[1]
-            width = status.result.width
-            height = status.result.height
+            baseMergeInfo = PaintingfaceMergeInfo(status.result.mergedRect, "")
+            this.status = status
         }
         enableImport()
         return true
@@ -116,16 +114,22 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
     fun processPainting(importFile: File) {
         val image = ImageIO.read(importFile).flipY().apply(true)
         with(continuation) {
-            baseMergeInfo.image = if (width > image.width || height > image.height) {
-                BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR) {
+            val painting = if (!status.requiresMerge) {
+                decoratePainting(image, status.result.paintingStack[0])
+            } else image
+            baseMergeInfo.image = if (status.result.width > painting.width || status.result.height > painting.height) {
+                BufferedImage(
+                    status.result.width, status.result.height,
+                    BufferedImage.TYPE_4BYTE_ABGR
+                ) {
                     drawImage(
-                        image,
+                        painting,
                         baseMergeInfo.transform.pastePoint.x.toInt(),
                         baseMergeInfo.transform.pastePoint.y.toInt(),
                         null
                     )
                 }
-            } else image
+            } else painting
         }
         mergePainting()
         with(gui) {
@@ -163,7 +167,7 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             requiredImageMergeInfoList.clear()
         }
         val faceContext = try {
-            continuation.manager.loadFile(importFile.absolutePath)
+            continuation.status.manager.loadFile(importFile.absolutePath)
         } catch (e: Exception) {
             return gui.reportFaceBundleError("导入差分表情文件时出错")
         }
@@ -171,9 +175,9 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
         val sprites = faceContext.objectList.filterIsInstance<Sprite>()
         if (sprites.isEmpty()) return gui.reportFaceBundleError()
         for (sprite in sprites) {
-            val mergeInfo = continuation.createMergeInfo(continuation.faceTransform, sprite.mName).apply {
+            val mergeInfo = continuation.createMergeInfo(continuation.status.result.faceRect, sprite.mName).apply {
                 val spriteImage = sprite.getImage(SpriteCropStrategy.USE_RECT) ?: return gui.reportFaceBundleError()
-                image = scalePaintingface(spriteImage, continuation.faceTransform)
+                image = scalePaintingface(spriteImage, continuation.status.result.faceRect)
             }
             runBlockingFX(gui) {
                 requiredImageMergeInfoList.add(mergeInfo)
@@ -207,12 +211,12 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
 
     fun processFaceImage(importFile: File) {
         val mergeInfo = continuation.createMergeInfo(
-            continuation.faceTransform,
+            continuation.status.result.faceRect,
             importFile.nameWithoutExtension
         ).apply {
             image = scalePaintingface(
                 ImageIO.read(importFile).flipY().apply(true),
-                continuation.faceTransform
+                continuation.status.result.faceRect
             )
         }
         runBlockingFX(gui) {
@@ -229,27 +233,27 @@ class PaintingfaceFunctions(private val gui: PaintingfacePanel): BackendFunction
             return
         }
         with(continuation) {
-            pasteX = faceTransform.pastePoint.x.toInt() + gui.spinnerX.value
-            pasteY = faceTransform.pastePoint.y.toInt() + gui.spinnerY.value
+            pasteX = status.result.faceRect.pastePoint.x.toInt() + gui.spinnerX.value
+            pasteY = status.result.faceRect.pastePoint.y.toInt() + gui.spinnerY.value
         }
         for (face in gui.requiredImageMergeInfoList) {
             face.changedFlag = 0b111
         }
         with(gui.spinnerX) {
             with(valueFactory as IntegerSpinnerValueFactory) {
-                min = (-continuation.faceTransform.pastePoint.x -
+                min = (-continuation.status.result.faceRect.pastePoint.x -
                         gui.requiredImageMergeInfoList[0].image.width).toInt()
                 max = continuation.baseMergeInfo.image.width -
-                        continuation.faceTransform.pastePoint.x.toInt()
+                        continuation.status.result.faceRect.pastePoint.x.toInt()
             }
             isDisable = false
         }
         with(gui.spinnerY) {
             with(valueFactory as IntegerSpinnerValueFactory) {
-                min = (-continuation.faceTransform.pastePoint.y -
+                min = (-continuation.status.result.faceRect.pastePoint.y -
                         gui.requiredImageMergeInfoList[0].image.height).toInt()
                 max = continuation.baseMergeInfo.image.height -
-                        continuation.faceTransform.pastePoint.y.toInt()
+                        continuation.status.result.faceRect.pastePoint.y.toInt()
             }
             isDisable = false
         }

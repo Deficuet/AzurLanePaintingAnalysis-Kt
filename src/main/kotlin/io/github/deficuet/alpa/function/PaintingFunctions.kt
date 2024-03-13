@@ -76,10 +76,9 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         }
         status as PaintingAnalyzeStatus
         with(continuation) {
-            width = status.result.width
-            height = status.result.height
+            this.status = status
             runBlockingFX(gui) {
-                for (tr in status.result.transforms) {
+                for (tr in status.result.paintingStack) {
                     requiredImageMergeInfoList.add(PaintingMergeInfo(tr, tr.fileName))
                 }
             }
@@ -152,8 +151,11 @@ class PaintingFunctions(private val gui: PaintingPanel): BackendFunctions() {
         with(mergeInfo) {
             exhibit = image.createPreview(height = 478)
             this.image = with(continuation) {
-                if (index == 0 && (width > painting.width || height > painting.height)) {
-                    BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR) {
+                if (index == 0 && (status.result.width > painting.width || status.result.height > painting.height)) {
+                    BufferedImage(
+                        status.result.width, status.result.height,
+                        BufferedImage.TYPE_4BYTE_ABGR
+                    ) {
                         drawImage(
                             painting,
                             mergeInfo.transform.pastePoint.x.toInt(),

@@ -1,11 +1,12 @@
 package io.github.deficuet.alpa.utils
 
 import io.github.deficuet.alp.TextureTransform
+import io.github.deficuet.alp.painting.PaintingAnalyzeStatus
 import io.github.deficuet.alp.painting.PaintingTransform
+import io.github.deficuet.alp.paintingface.PaintingfaceAnalyzeStatus
 import io.github.deficuet.jimage.copy
 import io.github.deficuet.jimage.flipY
 import io.github.deficuet.jimage.paste
-import io.github.deficuet.unitykt.UnityAssetManager
 import javafx.scene.control.Tab
 import java.awt.image.BufferedImage
 import java.io.Closeable
@@ -14,12 +15,11 @@ import javafx.scene.image.Image as ImageFX
 
 abstract class TaskContinuation(importFile: File): Closeable {
     val taskName: String = importFile.nameWithoutExtension
-    var width = -1
-    var height = -1
 }
 
 class PaintingTaskContinuation(importFile: File): TaskContinuation(importFile) {
     lateinit var mergedPainting: BufferedImage
+    lateinit var status: PaintingAnalyzeStatus
 
     override fun close() {  }
 }
@@ -44,8 +44,7 @@ class PaintingMergeInfo(
 
 class PaintingfaceTaskContinuation(importFile: File): TaskContinuation(importFile) {
     lateinit var baseMergeInfo: PaintingfaceMergeInfo
-    lateinit var faceTransform: TextureTransform
-    lateinit var manager: UnityAssetManager
+    lateinit var status: PaintingfaceAnalyzeStatus
     var pasteX: Int = -1
     var pasteY: Int = -1
 
@@ -98,8 +97,8 @@ class PaintingfaceTaskContinuation(importFile: File): TaskContinuation(importFil
     }
 
     override fun close() {
-        if (::manager.isInitialized) {
-            manager.close()
+        if (::status.isInitialized) {
+            status.manager.close()
         }
     }
 }
