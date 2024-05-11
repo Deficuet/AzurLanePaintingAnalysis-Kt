@@ -18,8 +18,6 @@ import javafx.stage.FileChooser
 import net.mamoe.yamlkt.Yaml
 import tornadofx.View
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
 import java.util.concurrent.FutureTask
 import kotlin.io.path.Path
 import javafx.scene.paint.Color as ColorFX
@@ -32,9 +30,8 @@ fun generateFileName(raw: String): String {
     var i = 1
     var fileName: String
     do {
-        fileName = "$raw#$i"
-        i++
-    } while (Files.exists(Path.of("${fileName}.png")))
+        fileName = "${raw}#${i++}"
+    } while (File("${fileName}.png").exists())
     return fileName
 }
 

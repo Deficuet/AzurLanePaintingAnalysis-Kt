@@ -4,6 +4,7 @@ import io.github.deficuet.alp.*
 import io.github.deficuet.jimage.copy
 import io.github.deficuet.jimage.flipY
 import io.github.deficuet.jimage.pasteExtension
+import io.github.deficuet.jimageio.savePng
 import io.github.deficuet.unitykt.cast
 import io.github.deficuet.unitykt.classes.Sprite
 import javafx.geometry.Insets
@@ -30,14 +31,14 @@ import javafx.scene.image.Image as ImageFX
 class Functions(private val gui: MainView): Closeable {
     lateinit var continuation: TaskContinuation
 
+    fun isTaskInitialized() = ::continuation.isInitialized
+
     fun analyzeFile(importFile: File): Boolean {
         if (::continuation.isInitialized) {
             continuation.close()
         }
         continuation = TaskContinuation(importFile)
         runBlockingFX(gui) {
-            importPaintingRootButton.isDisable = false
-            importFaceRootButton.isDisable = false
             currentTaskString.value = "当前任务：${continuation.taskName}"
             errorString.value = ""
             dependenciesList.clear()
@@ -99,23 +100,87 @@ class Functions(private val gui: MainView): Closeable {
                 }
             }
         }
-        enableImport()
         return true
     }
 
-    private fun enableImport() {
-        runBlockingFX(gui) {
-            val doAutoImport = configurations.painting.autoImport || configurations.face.autoImport
-            importImageVBox.isDisable = doAutoImport
-            importPaintingRootButton.isDisable = configurations.painting.autoImport
-            importFaceRootButton.isDisable = configurations.face.autoImport
-            saveButtonZone.isDisable = doAutoImport
-            imageComponentsListView.selectionModel.select(0)
-        }
-    }
-
     fun autoImport() {
-        // TODO
+        val doAutoImport = with(configurations) { painting.autoImport || face.autoImport }
+        if (doAutoImport) {
+            var anySucceed = false
+            for (component in gui.imageComponentsList) {
+                when (component.rect.type) {
+                    TextureType.PAINTING -> {
+                        if (!configurations.painting.autoImport) continue
+                        component as PaintingComponent
+                        gui.showDebugInfo("自动导入：${component.rect.name}")
+                        val file = configurations.painting.imageNamePattern.replace(
+                            "{name}", component.rect.name
+                        ).split(";").firstNotNullOfOrNull {
+                            File("${configurations.painting.importImagePath}/${it.trim('*')}")
+                                .takeIf { f -> f.exists() }
+                        }
+                        if (file == null) {
+                            component.hasImportError = true
+                            runBlockingFX(gui) { imageComponentsListView.refresh() }
+                            continue
+                        }
+                        if (processPainting(file, component, false)) {
+                            updatePaintingTab(component)
+                            anySucceed = true
+                        } else {
+                            component.hasImportError = true
+                            runBlockingFX(gui) { imageComponentsListView.refresh() }
+                            continue
+                        }
+                    }
+                    TextureType.FACE -> {
+                        if (!configurations.face.autoImport) continue
+                        component as FaceComponent
+                        gui.showDebugInfo("自动导入：差分表情文件")
+                        val fileName = continuation.taskName
+                            .split('_', limit = 3)
+                            .let { it.slice(0..it.lastIndex.coerceAtMost(1)) }
+                            .joinToString("_")
+                            .replace("_n", "")
+                        val file = configurations.face.bundleNamePattern.let { pattern ->
+                            pattern.replace("{name}", continuation.taskName)
+                                .split(";").firstNotNullOfOrNull {
+                                    File("${configurations.face.importBundlePath}/${it.trim('*')}")
+                                        .takeIf { f -> f.exists() }
+                                } ?: pattern.replace("{name}", fileName)
+                                .split(";").firstNotNullOfOrNull {
+                                    File("${configurations.face.importBundlePath}/${it.trim('*')}")
+                                        .takeIf { f -> f.exists() }
+                                }
+                        }
+                        if (file == null) {
+                            component.hasImportError = true
+                            runBlockingFX(gui) { imageComponentsListView.refresh() }
+                            continue
+                        }
+                        val groupList = processFaceBundle(file, component, false)
+                        if (groupList.isEmpty()) {
+                            component.hasImportError = true
+                            runBlockingFX(gui) { imageComponentsListView.refresh() }
+                            continue
+                        } else {
+                            initFaceTab(component)
+                            updateFaceTab(groupList, component)
+                            anySucceed = true
+                        }
+                    }
+                }
+            }
+            if (anySucceed) {
+                gui.showDebugInfo("合并立绘中")
+                groupPainting(gui.imageComponentsList[0], true)
+            }
+        }
+        runBlockingFX(gui) {
+            errorString.value = ""
+            imageComponentsListView.selectionModel.select(0)
+            importImageVBox.isDisable = false
+        }
     }
 
     private fun getTabInsertedIndex(componentIndex: Int): Int {
@@ -146,12 +211,16 @@ class Functions(private val gui: MainView): Closeable {
         return f
     }
 
-    fun processPainting(imageFile: File, component: PaintingComponent): Boolean {
+    fun processPainting(
+        imageFile: File,
+        component: PaintingComponent,
+        showError: Boolean = true
+    ): Boolean {
         val image: BufferedImage
         try {
             image = ImageIO.read(imageFile)
         } catch (e: Exception) {
-            gui.reportBundleError("导入的图像文件不可用")
+            if (showError) gui.reportBundleError("导入的图像文件不可用")
             return false
         }
         val painting = decoratePainting(image.flipY().apply(), component.rect)
@@ -258,20 +327,24 @@ class Functions(private val gui: MainView): Closeable {
         return file
     }
 
-    fun processFaceBundle(bundle: File, component: FaceComponent): List<FaceImageGroup> {
+    fun processFaceBundle(
+        bundle: File,
+        component: FaceComponent,
+        showError: Boolean = true
+    ): List<FaceImageGroup> {
         val faceContext = try {
             continuation.manager.loadFile(bundle)
         } catch (e: Exception) {
-            gui.reportBundleError("导入差分表情文件时出错")
+            if (showError) gui.reportBundleError("导入差分表情文件时出错")
             return emptyList()
         }
         if (faceContext.objectList.isEmpty()) {
-            gui.reportBundleError("差分表情文件不可用")
+            if (showError) gui.reportBundleError("差分表情文件不可用")
             return emptyList()
         }
         val sprites = faceContext.objectList.filterIsInstance<Sprite>()
         if (sprites.isEmpty()) {
-            gui.reportBundleError("差分表情文件不可用")
+            if (showError) gui.reportBundleError("差分表情文件不可用")
             return emptyList()
         }
         val groupList = mutableListOf<FaceImageGroup>()
@@ -371,7 +444,11 @@ class Functions(private val gui: MainView): Closeable {
         }
     }
 
-    fun groupPainting(changedComponent: Component, previewEachStep: Boolean, forcedInit: Boolean = false) {
+    fun groupPainting(
+        changedComponent: Component,
+        previewEachStep: Boolean,
+        forcedInit: Boolean = false
+    ) {
         val faceComponent = continuation.faceComponent
         val isFaceImported = faceComponent.isImported
         if (forcedInit || !isFaceImported || changedComponent.index < continuation.faceComponent.index) {
@@ -427,10 +504,12 @@ class Functions(private val gui: MainView): Closeable {
     }
 
     @Synchronized
-    fun getFaceGroupedPainting(previewEachStep: Boolean): BufferedImage {
+    fun getFaceGroupedPainting(
+        previewEachStep: Boolean,
+        groupParam: FaceImageGroup? = null
+    ): BufferedImage {
         val faceComponent = continuation.faceComponent
-        val group = faceComponent.previewTabContent
-            .faceImageGroupListView.selectionModel.selectedItem
+        val group = groupParam ?: faceComponent.previewTabContent.faceImageGroupListView.selectionModel.selectedItem
         if (group.changedFlags.and(0b001) > 0) {
             group.groupedPainting = with(faceComponent) {
                 continuation.groupedPainting.copy().pasteExtension(
@@ -647,6 +726,39 @@ class Functions(private val gui: MainView): Closeable {
                 }
             }
         }
+    }
+
+    fun saveGroupedPainting() {
+        if (continuation.faceComponent.isImported) {
+            getFaceGroupedPainting(false).flipY().apply().savePng(
+                File(configurations.painting.importImagePath)
+                    .resolve("${continuation.taskName}_exp.png"),
+                configurations.pngCompressionLevel
+            )
+        } else {
+            continuation.groupedPainting.flipY().apply().savePng(
+                File(configurations.painting.importImagePath)
+                    .resolve("${continuation.taskName}_group.png"),
+                configurations.pngCompressionLevel
+            )
+        }
+    }
+
+    fun saveAllFacePainting() {
+        val groupList = continuation.faceComponent.faceImageGroupList
+        for ((i, group) in groupList.withIndex()) {
+            gui.showDebugInfo("保存进度：${i+1} / ${groupList.size}")
+            var fileName = configurations.painting.importImagePath +
+                    "/${continuation.taskName}_exp_${group.name}"
+            if (File("${fileName}.png").exists()) {
+                fileName = generateFileName(fileName)
+            }
+            getFaceGroupedPainting(false, group).flipY().apply().savePng(
+                File("${fileName}.png"),
+                configurations.pngCompressionLevel
+            )
+        }
+        runBlockingFX(gui) { errorString.value = "" }
     }
 
     fun openFolder() {

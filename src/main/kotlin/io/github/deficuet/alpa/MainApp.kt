@@ -38,13 +38,15 @@ class MainApp: App(MainView::class) {
 }
 
 class MainView: View("ALPA") {
-    var compressionLevelSpinner: Spinner<Int> by singleAssign()
+    private var compressionLevelSpinner: Spinner<Int> by singleAssign()
+    private var autoImportPaintingCheckBox: CheckBox by singleAssign()
+    private var autoImportFaceCheckBox: CheckBox by singleAssign()
     var paintingRootLabel: TextField by singleAssign()
-    var importPaintingRootButton: Button by singleAssign()
+    private var importPaintingRootButton: Button by singleAssign()
     var faceRootLabel: TextField by singleAssign()
-    var importFaceRootButton: Button by singleAssign()
-    var assetSystemRootLabel: TextField by singleAssign()
-    var importSysRootButton: Button by singleAssign()
+    private var importFaceRootButton: Button by singleAssign()
+    private var assetSystemRootLabel: TextField by singleAssign()
+    private var importSysRootButton: Button by singleAssign()
 
     private var operationPanel: HBox by singleAssign()
 
@@ -61,10 +63,9 @@ class MainView: View("ALPA") {
     val imageComponentsList = observableListOf<Component>()
     var imageComponentsListView: ListView<Component> by singleAssign()
 
-    var saveButtonZone: HBox by singleAssign()
+    private var saveButtonZone: HBox by singleAssign()
     var savePaintingButton: Button by singleAssign()
     var saveAllFaceButton: Button by singleAssign()
-    var openSaveFolderButton: Button by singleAssign()
 
     var previewTabPane: TabPane by singleAssign()
     var mainPreviewImageView: ImageView by singleAssign()
@@ -74,7 +75,7 @@ class MainView: View("ALPA") {
 
     override val root = vbox {
         titledpane("设置", collapsible = false) {
-            vboxConstraints { margin = Insets(16.0, 16.0, 0.0, 16.0) }
+            vboxConstraints { margin = Insets(16.0, 17.0, 0.0, 16.0) }
             hbox {
                 paddingAll = 16.0
                 vbox {
@@ -98,7 +99,7 @@ class MainView: View("ALPA") {
                         alignment = Pos.CENTER_LEFT
                         vboxConstraints { marginTop = 16.0 }
                         label("自动导入：")
-                        checkbox("立绘") {
+                        autoImportPaintingCheckBox = checkbox("立绘") {
                             isSelected = configurations.painting.autoImport
                             selectedProperty().addListener(
                                 ChangeListener { _, _, new ->
@@ -106,7 +107,7 @@ class MainView: View("ALPA") {
                                 }
                             )
                         }
-                        checkbox("差分表情Bundle") {
+                        autoImportFaceCheckBox = checkbox("差分表情文件") {
                             hboxConstraints { marginLeft = 16.0 }
                             isSelected = configurations.face.autoImport
                             selectedProperty().addListener(
@@ -187,7 +188,7 @@ class MainView: View("ALPA") {
                                 it.isNotBlank()
                             } ?: "无"
                         ) {
-                            minWidth = 247.0; minHeight = 24.0
+                            minWidth = 245.0; minHeight = 24.0
                             isEditable = false
                         }
                         importSysRootButton = button("浏览...") {
@@ -219,21 +220,30 @@ class MainView: View("ALPA") {
                         hbox {
                             importFileButton = button("导入文件") {
                                 minWidth = 80.0; minHeight = 30.0
+                                tooltip("右键按钮重载当前文件")
                                 action {
-                                    setUpdateMode(true)
-                                    importSysRootButton.isDisable = true
+                                    setImportMainMode(true)
                                     val bundle = Functions.importMainFile()
                                     if (bundle != null) {
                                         runAsync {
                                             if (functions.analyzeFile(bundle)) {
                                                 functions.autoImport()
                                             }
-                                            setUpdateMode(false)
-                                            importSysRootButton.isDisable = false
+                                            setImportMainMode(false)
                                         }
                                     } else {
-                                        setUpdateMode(false)
-                                        importSysRootButton.isDisable = false
+                                        setImportMainMode(false)
+                                    }
+                                }
+                                onRightClick {
+                                    if (functions.isTaskInitialized()) {
+                                        setImportMainMode(true)
+                                        runAsync {
+                                            if (functions.analyzeFile(functions.continuation.importFile)) {
+                                                functions.autoImport()
+                                            }
+                                            setImportMainMode(false)
+                                        }
                                     }
                                 }
                             }
@@ -269,7 +279,7 @@ class MainView: View("ALPA") {
                             button("添加图像") {
                                 minWidth = 175.0; minHeight = 30.0
                                 action {
-                                    setImportMode(true)
+                                    setImportImageMode(true)
                                     val component = imageComponentsListView.selectionModel.selectedItem
                                     when (component.rect.type) {
                                         TextureType.PAINTING -> {
@@ -285,7 +295,7 @@ class MainView: View("ALPA") {
                                                             select(selectedIndex + 1)
                                                         }
                                                     }
-                                                    setImportMode(false)
+                                                    setImportImageMode(false)
                                                 }
                                                 return@action
                                             }
@@ -308,13 +318,13 @@ class MainView: View("ALPA") {
                                                             select(selectedIndex + 1)
                                                         }
                                                     }
-                                                    setImportMode(false)
+                                                    setImportImageMode(false)
                                                 }
                                                 return@action
                                             }
                                         }
                                     }
-                                    setImportMode(false)
+                                    setImportImageMode(false)
                                 }
                             }
                             importFaceBundleButton = button("添加差分表情文件") {
@@ -322,7 +332,7 @@ class MainView: View("ALPA") {
                                 hboxConstraints { marginLeft = 16.0 }
                                 minWidth = 175.0; minHeight = 30.0
                                 action {
-                                    setImportMode(true)
+                                    setImportImageMode(true)
                                     val faceBundle = functions.importFaceBundle()
                                     if (faceBundle != null) {
                                         val component = functions.continuation.faceComponent
@@ -344,10 +354,10 @@ class MainView: View("ALPA") {
                                                     }
                                                 }
                                             }
-                                            setImportMode(false)
+                                            setImportImageMode(false)
                                         }
                                     } else {
-                                        setImportMode(false)
+                                        setImportImageMode(false)
                                     }
                                 }
                             }
@@ -380,7 +390,15 @@ class MainView: View("ALPA") {
                             minWidth = 123.0; minHeight = 30.0
                             isDisable = true
                             action {
-                                // TODO: save
+                                setUpdateMode(true)
+                                importPaintingRootButton.isDisable = true
+                                compressionLevelSpinner.isDisable = true
+                                runAsync {
+                                    functions.saveGroupedPainting()
+                                    setUpdateMode(false)
+                                    importPaintingRootButton.isDisable = false
+                                    compressionLevelSpinner.isDisable = false
+                                }
                             }
                         }
                         saveAllFaceButton = button("为所有表情保存") {
@@ -388,11 +406,19 @@ class MainView: View("ALPA") {
                             minWidth = 122.0; minHeight = 30.0
                             isDisable = true
                             action {
-                                // TODO: save all
+                                setUpdateMode(true)
+                                importPaintingRootButton.isDisable = true
+                                compressionLevelSpinner.isDisable = true
+                                runAsync {
+                                    functions.saveAllFacePainting()
+                                    setUpdateMode(false)
+                                    importPaintingRootButton.isDisable = false
+                                    compressionLevelSpinner.isDisable = false
+                                }
                             }
                         }
                     }
-                    openSaveFolderButton = button("打开保存文件夹") {
+                    button("打开保存文件夹") {
                         hboxConstraints { marginLeft = 16.0 }
                         minWidth = 123.0; minHeight = 30.0
                         action {
@@ -421,7 +447,7 @@ class MainView: View("ALPA") {
         }
     }
 
-    private fun setImportMode(enable: Boolean) {
+    private fun setImportImageMode(enable: Boolean) {
         importImageVBox.isDisable = enable
         saveButtonZone.isDisable = enable
         importFileButton.isDisable = enable
@@ -437,6 +463,15 @@ class MainView: View("ALPA") {
         saveButtonZone.isDisable = enable
         previewTabPane.isDisable = enable
         updateModeEnabled = enable
+    }
+
+    private fun setImportMainMode(enable: Boolean) {
+        setUpdateMode(enable)
+        importPaintingRootButton.isDisable = enable
+        importFaceRootButton.isDisable = enable
+        importSysRootButton.isDisable = enable
+        autoImportPaintingCheckBox.isDisable = enable
+        autoImportFaceCheckBox.isDisable = enable
     }
 
     fun showDebugInfo(msg: String) {

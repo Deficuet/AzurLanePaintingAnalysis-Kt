@@ -14,7 +14,7 @@ mainClassName = "io.github.deficuet.alpa.MainApp"
 
 javafx {
     version = "17.0.11"
-    modules = ['javafx.controls', 'javafx.graphics', 'javafx.swing']
+    modules = ['javafx.controls', 'javafx.graphics']
 }
 
 repositories {

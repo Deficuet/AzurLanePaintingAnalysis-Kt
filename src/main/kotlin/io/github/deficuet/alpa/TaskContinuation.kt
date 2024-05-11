@@ -11,7 +11,7 @@ import java.io.Closeable
 import java.io.File
 import javafx.scene.image.Image as ImageFX
 
-class TaskContinuation(importFile: File): Closeable {
+class TaskContinuation(val importFile: File): Closeable {
     val taskName = importFile.nameWithoutExtension
     lateinit var groupedPainting: BufferedImage
     lateinit var result: AnalyzeResult
