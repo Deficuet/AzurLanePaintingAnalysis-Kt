@@ -35,7 +35,7 @@ dependencies {
     implementation 'org.json:json:20231013'
     implementation 'com.github.Deficuet:JImageUtils:0.0.6'
     implementation 'com.github.Deficuet:AdvancedJImageIO:0.0.3'
-    implementation 'com.github.Deficuet:AzurlanePaintingUtils:1.0.2'
+    implementation 'com.github.Deficuet:AzurlanePaintingUtils:1.0.2.1'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
 }
