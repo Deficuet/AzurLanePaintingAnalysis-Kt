@@ -67,6 +67,7 @@ class Functions(private val gui: MainView): Closeable {
                         true -> Color.BLUE
                         else -> errorTextFill
                     }
+                    tooltip(it)
                 }
             }
         }
