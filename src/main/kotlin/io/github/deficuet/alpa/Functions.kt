@@ -316,9 +316,9 @@ class Functions(private val gui: MainView): Closeable {
                 FileChooser.ExtensionFilter("Required Files ($wct)", wct),
                 FileChooser.ExtensionFilter("All Files (*.*)", "*.*")
             ),
-            File(configurations.face.importBundlePath).withDefaultPath(
-                Path(configurations.assetSystemRoot).resolve("paintingface").pathString
-            )
+            File(configurations.face.importBundlePath)
+                .withDefaultPath(Path(configurations.assetSystemRoot).resolve("paintingface").pathString)
+                .withDefaultPath()
         )
         if (files.isEmpty()) return null
         gui.errorString.value = ""
@@ -799,9 +799,7 @@ class Functions(private val gui: MainView): Closeable {
         fun importAssetSystemRoot(): File? {
             val folder = chooseDirectory(
                 "选择文件夹",
-                configurations.assetSystemRoot.let {
-                    File(it).withDefaultPath()
-                }
+                File(configurations.assetSystemRoot).withDefaultPath()
             ) ?: return null
             configurations.assetSystemRoot = folder.absolutePath
             return folder
@@ -810,9 +808,9 @@ class Functions(private val gui: MainView): Closeable {
         fun importMainFile(): File? {
             val files = chooseFile(
                 "选择文件", allTypeFilter,
-                File(configurations.importMainBundlePath).withDefaultPath(
-                    Path(configurations.assetSystemRoot).resolve("painting").pathString
-                )
+                File(configurations.importMainBundlePath)
+                    .withDefaultPath(Path(configurations.assetSystemRoot).resolve("painting").pathString)
+                    .withDefaultPath()
             )
             if (files.isEmpty()) return null
             val file = files[0]

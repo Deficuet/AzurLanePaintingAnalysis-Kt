@@ -23,7 +23,7 @@ import kotlin.io.path.Path
 import javafx.scene.paint.Color as ColorFX
 
 fun File.withDefaultPath(defaultPath: String = "C:/Users"): File {
-    return if (exists()) this else File(defaultPath)
+    return if (exists() && isDirectory) this else File(defaultPath)
 }
 
 fun generateFileName(raw: String): String {
