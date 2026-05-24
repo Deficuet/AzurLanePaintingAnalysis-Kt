@@ -153,7 +153,7 @@
 
 - 下载最新的[Release](https://github.com/Deficuet/AzurLanePaintingAnalysis-Kt/releases)后，解压所有文件运行bat即可
 - 启动环境：
-  - Java 11
+  - Java 17
   - JavaFX 17.0.11
 - 自带一套JavaFX SDK 17.0.11，从官网[JavaFX SDK](https://gluonhq.com/products/javafx/)直接下载获取，bat里已经配置好可以直接用，也可以编辑bat文件自定义启动
 - 启动之后自动生成一个配置文件，使用时会自动更新保存
