@@ -36,7 +36,8 @@
 
 第一次使用几乎所有交互都被禁用了，必须先设置导入`素材文件根目录`。
 
-- <b>该目录下必须包含`painting`，`paintingface`文件夹以及`dependencies`文件。</b>
+- <b>该目录下通常需要包含包括但不限于`painting`，`paintingface`文件夹以及`dependencies`，`custom_builtin`，`shader`文件。</b>
+  - 具体需要哪些文件取决于导入的文件，虽然当下的文件依赖关系比较稳定和可预测（但几年前就有的因为神秘依赖引发的bug也仍然没修），但仍然不能排除重要依赖出现在奇奇怪怪的地方，哪里标红了就取相应文件即可。
 
 例如在Android文件系统里碧蓝航线的文件结构是
 ```
@@ -46,6 +47,7 @@
   - painting/
   - paintingface/
   - ...
+  - custom_builtin
   - dependencies
 ```
 那么素材文件根目录就是`/sdcard/Android/data/com.bilibili.azurlane/files/AssetBundles`
